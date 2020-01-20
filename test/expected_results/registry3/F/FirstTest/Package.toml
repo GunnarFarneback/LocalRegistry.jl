@@ -1,0 +1,3 @@
+name = "FirstTest"
+uuid = "d7508571-2240-4c50-b21c-240e414cc6d2"
+repo = "git@example.com:Julia/FirstTest.jl.git"

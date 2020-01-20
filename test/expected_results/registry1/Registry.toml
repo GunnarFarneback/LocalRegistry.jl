@@ -1,0 +1,7 @@
+name = "TestRegistry"
+uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369"
+repo = "git@example.com:Julia/TestRegistry.git"
+description = "For testing purposes only."
+
+[packages]
+d7508571-2240-4c50-b21c-240e414cc6d2 = { name = "FirstTest", path = "F/FirstTest" }

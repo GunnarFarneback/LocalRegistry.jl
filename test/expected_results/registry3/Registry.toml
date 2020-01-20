@@ -1,0 +1,9 @@
+name = "TestRegistry"
+uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369"
+repo = "git@example.com:Julia/TestRegistry.git"
+description = "For testing purposes only."
+
+[packages]
+587475ba-b771-5e3f-ad9e-33799f191a9c = { name = "Flux", path = "F/Flux" }
+916415d5-f1e6-5110-898d-aaa5f9f070e0 = { name = "Images", path = "I/Images" }
+d7508571-2240-4c50-b21c-240e414cc6d2 = { name = "FirstTest", path = "F/FirstTest" }
