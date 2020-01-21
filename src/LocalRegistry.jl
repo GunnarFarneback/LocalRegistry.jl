@@ -64,40 +64,54 @@ function create_registry(path, repo; description = nothing,
 end
 
 """
-    register(package_path, registry_path)
-    register(package_name, registry_path)
-    using <package>
-    register(<package>, registry_path)
+    register(package, registry)
 
-Register `package` or a new version of `package` in the registry
-working copy at `registry_path`. The version number is obtained from
-the version field of the package's `Project.toml`.
+Register the new `package` in the registry `registry`. The version
+number and other information is obtained from the package's
+`Project.toml`.
 
-If the package is identified by a string, this is either interpreted
-as a path to the package or a package name. In the latter case the
-package must be available in the current package environment as a
-developed package. To register a package in the current working
-directory by path, start the path with `"./"`.
+    register(package)
 
-Note: This will only update the registry locally. Review the result
-and `git push` it manually.
+Register a new version of `package`.  The version number is obtained
+from the package's `Project.toml`.
 
-    register(<package>, registry_path; commit = false)
+Note: In both cases this will only update the registry locally. Review
+the result and `git push` it manually. The package must live in a git
+working copy, e.g. having been cloned by `Pkg.develop`.
 
-Only make the changes to the registry but do not commit.
+`package` can be specified in the following ways:
+* By package name. The package must be available in the active `Pkg`
+  environment.
+* By path. This is distinguished from package name by having more than
+  one path component. A path in the current working directory can be
+  specified by starting with `"./"`.
+* By module. It needs to first be loaded by `using` or `import`.
+
+`registry` can be specified by name or by path in the same way as
+`package`. If omitted or `nothing`, it will be automatically located
+by `package`.
+
+*Keyword arguments*
+
+    register(package, registry; commit = true, repo = nothing, gitconfig = Dict())
+
+* `commit`: If `false`, only make the changes to the registry but do not commit.
+* `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package.
+* `gitconfig`: Optional configuration parameters for the `git` command.
 """
-function register(package::Union{Module, AbstractString}, registry_path;
+function register(package::Union{Module, AbstractString},
+                  registry::Union{Nothing, AbstractString} = nothing;
                   repo = nothing, commit = true, gitconfig::Dict = Dict())
-    registry_path = expanduser(registry_path)
-    if LibGit2.isdirty(LibGit2.GitRepo(registry_path))
-        throw("Registry repo is dirty. Stash or commit files.")
-    end
-
     # Find and read the `Project.toml` for the package.
     package_path = find_package_path(package)
     pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
     if isnothing(pkg.name)
         throw("$(package) does not have a Project.toml file")
+    end
+
+    registry_path = find_registry_path(registry, pkg)
+    if LibGit2.isdirty(LibGit2.GitRepo(registry_path))
+        throw("Registry repo is dirty. Stash or commit files.")
     end
 
     # Compute the tree hash for the package.
@@ -146,7 +160,7 @@ function find_package_path(package_name::AbstractString)
         if !isdir(package_name)
             error("Package path $(package_name) does not exist.")
         end
-        return abspath(package_name)
+        return abspath(expanduser(package_name))
     end
 
     ctx = Pkg.Types.Context()
@@ -158,6 +172,39 @@ function find_package_path(package_name::AbstractString)
     if isnothing(pkg_path)
         error("Package must be developed to be registered.")
     end
+    return pkg_path
+end
+
+function find_registry_path(registry::AbstractString, pkg)
+    if length(splitpath(registry)) > 1
+        return abspath(expanduser(registry))
+    end
+
+    all_registries = Pkg.Types.collect_registries()
+    matching_registries = filter(r -> r.name == registry, all_registries)
+    if isempty(matching_registries)
+        error("Registry $(registry) not found.")
+    end
+
+    return first(matching_registries).path
+end
+
+function find_registry_path(registry::Nothing, pkg)
+    all_registries = Pkg.Types.collect_registries()
+
+    matching_registries = filter(all_registries) do reg_spec
+        reg_data = Pkg.Types.read_registry(joinpath(reg_spec.path,
+                                                    "Registry.toml"))
+        haskey(reg_data["packages"], string(pkg.uuid))
+    end
+
+    if isempty(matching_registries)
+        error("Package $(pkg.name) not found in any registry. Please specify in which registry you want to register it.")
+    elseif length(matching_registries) > 1
+        error("Package $(pkg.name) is registered in more than one registry, please specify in which you want to register the package.")
+    end
+
+    return first(matching_registries).path
 end
 
 function get_tree_hash(package_path, gitconfig)
