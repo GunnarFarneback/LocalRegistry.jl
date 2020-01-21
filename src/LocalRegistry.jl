@@ -1,3 +1,15 @@
+"""
+# LocalRegistry
+
+Create and maintain local registries for Julia packages. This package
+is intended to provide a simple but manual workflow for maintaining
+small local registries (private or public) without making any
+assumptions about how the registry or the packages are hosted.
+
+Registry creation is done by the function `create_registry`.
+
+Registration of new and updated packages is done by the function `register`.
+"""
 module LocalRegistry
 
 using RegistryTools: RegistryTools, gitcmd, Compress
