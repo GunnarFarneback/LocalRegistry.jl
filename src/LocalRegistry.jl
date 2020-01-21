@@ -1,6 +1,6 @@
 module LocalRegistry
 
-using RegistryTools: RegistryTools, gitcmd
+using RegistryTools: RegistryTools, gitcmd, Compress
 using UUIDs: uuid4
 using LibGit2
 using Pkg: Pkg, TOML
@@ -225,13 +225,13 @@ end
 function update_deps_file(pkg::Pkg.Types.Project, package_path)
     deps_file = joinpath(package_path, "Deps.toml")
     if isfile(deps_file)
-        deps_data = Pkg.Compress.load(deps_file)
+        deps_data = Compress.load(deps_file)
     else
         deps_data = Dict()
     end
 
     deps_data[pkg.version] = pkg.deps
-    Pkg.Compress.save(deps_file, deps_data)
+    Compress.save(deps_file, deps_data)
 end
 
 function check_compatibilities(pkg::Pkg.Types.Project)
@@ -258,7 +258,7 @@ end
 function update_compat_file(pkg::Pkg.Types.Project, package_path)
     compat_file = joinpath(package_path, "Compat.toml")
     if isfile(compat_file)
-        compat_data = Pkg.Compress.load(compat_file)
+        compat_data = Compress.load(compat_file)
     else
         compat_data = Dict()
     end
@@ -273,7 +273,7 @@ function update_compat_file(pkg::Pkg.Types.Project, package_path)
         d[n] = length(ranges) == 1 ? string(ranges[1]) : map(string, ranges)
     end
     compat_data[pkg.version] = d
-    Pkg.Compress.save(compat_file, compat_data)
+    Compress.save(compat_file, compat_data)
 end
 
 function versionrange(lo::Pkg.Types.VersionBound, hi::Pkg.Types.VersionBound)

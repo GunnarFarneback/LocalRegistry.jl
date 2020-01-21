@@ -1,4 +1,4 @@
-using RegistryTools: gitcmd
+using RegistryTools: gitcmd, Compress
 using Pkg: Pkg, TOML
 
 # Read `project_file` and create or update a corresponding bare bones
@@ -82,7 +82,7 @@ end
 # with Compress.load.
 function compare_files(path1, path2)
     if endswith(path1, "Deps.toml") || endswith(path1, "Compat.toml")
-        return Pkg.Compress.load(path1) == Pkg.Compress.load(path2)
+        return Compress.load(path1) == Compress.load(path2)
     end
     return read(path1) == read(path2)
 end
