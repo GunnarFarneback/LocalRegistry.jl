@@ -22,7 +22,7 @@ system `PATH`. If
 ```
 run(`git --version`)
 ```
-in the Julia REPL prints a version number rather than giving an error
+in the Julia REPL prints a version number rather than giving an error,
 you are good to go.
 
 ## Installation
@@ -54,37 +54,32 @@ This only needs to be done once.
 
 ```
 using LocalRegistry
-using MyPackage
-register(MyPackage, <registry path>)
+register(package, registry)
 ```
 
-This assumes that you have a clean working copy of your registry at
-`<registry path>` and adds `MyPackage` to the working copy. Review the
-result and `git push` it manually. With the keyword argument
-`commit = false`, the changes are made to the working copy but are not
-committed.
+Register the new `package` in the registry `registry`. The version
+number and other information is obtained from the package's
+`Project.toml`. The easiest way to specify `package` and `registry` is
+by name as strings. See the documentation string for more options.
 
 Notes:
-* The package must be stored as a git working copy, e.g. using
-  `Pkg.develop`.
+* You need to have a clean working copy of your registry.
+* The changes are committed to the registry but you need to push them
+  yourself.
+* The package must be stored as a git working copy, e.g. having been
+  cloned with `Pkg.develop`.
+* The package must be available in the current `Pkg` environment.
 * The package must have a `Project.toml` file.
 * There is no checking that the dependencies are available in any
   registry.
 
-The package can also be registered by name or by path:
-```
-using LocalRegistry
-register("MyPackage", <registry_path>)
-register("path/to/MyPackage", <registry_path>)
-```
-If registered by name the package must be a developed package in the
-current package environment. Strings with only one path component are
-interpreted as package names. To register by path in the current
-working directory, use `"./MyPackage"`.
-
 ## Add a New Version of a Package
 
-This is done in exactly the same way as adding a package. The only
-requirement is that the `version` field of the package's
-`Project.toml` is updated to a new version that is not already in the
-registry.
+```
+using LocalRegistry
+register(package)
+```
+
+When adding a new version of a package, the registry can be
+omitted. The new version number is obtained from the `version` field
+of the package's `Project.toml`.
