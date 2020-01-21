@@ -71,6 +71,17 @@ Notes:
 * There is no checking that the dependencies are available in any
   registry.
 
+The package can also be registered by name or by path:
+```
+using LocalRegistry
+register("MyPackage", <registry_path>)
+register("path/to/MyPackage", <registry_path>)
+```
+If registered by name the package must be a developed package in the
+current package environment. Strings with only one path component are
+interpreted as package names. To register by path in the current
+working directory, use `"./MyPackage"`.
+
 ## Add a New Version of a Package
 
 This is done in exactly the same way as adding a package. The only

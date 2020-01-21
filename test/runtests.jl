@@ -80,7 +80,8 @@ for project_file in project_files
     prepare_package(packages_dir, project_file)
     package = match(r"[a-zA-Z]+", project_file).match
     @show project_file
-    register(getfield(Main, Symbol(package)), registry_dir)
+    # Register by path instead of module in this test.
+    register(joinpath(packages_dir, package), registry_dir)
 end
 @test check_result(registry_dir, "registry3")
 

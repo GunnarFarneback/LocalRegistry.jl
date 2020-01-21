@@ -52,12 +52,20 @@ function create_registry(path, repo; description = nothing,
 end
 
 """
+    register(package_path, registry_path)
+    register(package_name, registry_path)
     using <package>
     register(<package>, registry_path)
 
 Register `package` or a new version of `package` in the registry
 working copy at `registry_path`. The version number is obtained from
 the version field of the package's `Project.toml`.
+
+If the package is identified by a string, this is either interpreted
+as a path to the package or a package name. In the latter case the
+package must be available in the current package environment as a
+developed package. To register a package in the current working
+directory by path, start the path with `"./"`.
 
 Note: This will only update the registry locally. Review the result
 and `git push` it manually.
@@ -66,19 +74,20 @@ and `git push` it manually.
 
 Only make the changes to the registry but do not commit.
 """
-function register(package::Module, registry_path; repo = nothing, commit = true,
-                  gitconfig::Dict = Dict())
+function register(package::Union{Module, AbstractString}, registry_path;
+                  repo = nothing, commit = true, gitconfig::Dict = Dict())
     registry_path = expanduser(registry_path)
     if LibGit2.isdirty(LibGit2.GitRepo(registry_path))
         throw("Registry repo is dirty. Stash or commit files.")
     end
 
     # Find and read the `Project.toml` for the package.
-    package_path = dirname(dirname(pathof(package)))
+    package_path = find_package_path(package)
     pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
     if isnothing(pkg.name)
         throw("$(package) does not have a Project.toml file")
     end
+
     # Compute the tree hash for the package.
     tree_hash = get_tree_hash(package_path, gitconfig)
 
@@ -106,6 +115,37 @@ function register(package::Module, registry_path; repo = nothing, commit = true,
     end
 
     return
+end
+
+# If the package is provided as a module, directly find the package
+# path from the loaded code. This works both if the module is loaded
+# from the current package environment or found in LOAD_PATH.
+function find_package_path(package::Module)
+    return dirname(dirname(pathof(package)))
+end
+
+# A string argument is either interpreted as a path or as a package
+# name, decided by the number of components returned by `splitpath`.
+#
+# If the package is given by name, it must be available in the current
+# package environment as a developed package.
+function find_package_path(package_name::AbstractString)
+    if length(splitpath(package_name)) > 1
+        if !isdir(package_name)
+            error("Package path $(package_name) does not exist.")
+        end
+        return abspath(package_name)
+    end
+
+    ctx = Pkg.Types.Context()
+    if !haskey(ctx.env.project.deps, package_name)
+        error("Unknown package $package_name.")
+    end
+    pkg_uuid = ctx.env.project.deps[package_name]
+    pkg_path = ctx.env.manifest[pkg_uuid].path
+    if isnothing(pkg_path)
+        error("Package must be developed to be registered.")
+    end
 end
 
 function get_tree_hash(package_path, gitconfig)
