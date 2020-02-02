@@ -36,10 +36,15 @@ pkg"add https://github.com/GunnarFarneback/LocalRegistry.jl"
 
 ```
 using LocalRegistry
-create_registry(<local path>, <repository url>, description = "My private registry")
+create_registry(name, repository_url, description = "My private registry")
 ```
-This prepares a registry in the given directory, which must previously
-not exist. Review the result and `git push` it manually. The last component of the path is used as the name of the registry.
+This prepares a registry with the given name in the the standard
+location for registries. Review the result and `git push` it
+manually. When created in this way the registry is automatically
+activated and the next section can be skipped.
+
+The registry can also be created at a specified path. See the
+documentation string for details.
 
 ## Add Registry
 
@@ -48,7 +53,7 @@ To activate the registry, do
 using Pkg
 pkg"registry add <repository url>"
 ```
-This only needs to be done once.
+This only needs to be done once per Julia installation.
 
 ## Add a Package
 
@@ -82,4 +87,4 @@ register(package)
 
 When adding a new version of a package, the registry can be
 omitted. The new version number is obtained from the `version` field
-of the package's `Project.toml`.
+of the package's `Project.toml` file.

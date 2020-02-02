@@ -20,19 +20,28 @@ using Pkg: Pkg, TOML
 export create_registry, register
 
 """
+    create_registry(name, repo; description = nothing)
     create_registry(path, repo; description = nothing)
 
-Create a registry at the local directory `path` and with repository
-URL `repo`. Optionally add a description of the purpose of the
-registry with the keyword argument `description`. The last component of
-`path` is used as name of the registry.
+Create a registry with the given `name` or at the local directory
+`path`, and with repository URL `repo`. Optionally add a description
+of the purpose of the registry with the keyword argument
+`description`. The first argument is interpreted as a path if it has
+more than one path component and otherwise as a name. If a path is
+given, the last path component is used as the name of the registry. If
+a name is given, it is created in the standard registry location. In
+both cases the registry path must not previously exist.
 
 Note: This will only prepare the registry locally. Review the result
 and `git push` it manually.
 """
-function create_registry(path, repo; description = nothing,
+function create_registry(name_or_path, repo; description = nothing,
                          gitconfig::Dict = Dict(), uuid = nothing)
-    path = abspath(path)
+    if length(splitpath(name_or_path)) > 1
+        path = abspath(expanduser(name_or_path))
+    else
+        path = joinpath(first(DEPOT_PATH), "registries", name_or_path)
+    end
     name = basename(path)
     if isempty(name)
         # If `path` ends with a slash, `basename` becomes empty and
@@ -49,7 +58,7 @@ function create_registry(path, repo; description = nothing,
     if isnothing(uuid)
         uuid = string(uuid4())
     end
-    
+
     registry_data = RegistryTools.RegistryData(name, uuid, repo = repo,
                                                description = description)
     RegistryTools.write_registry(joinpath(path, "Registry.toml"), registry_data)
@@ -59,6 +68,7 @@ function create_registry(path, repo; description = nothing,
     run(`$git add Registry.toml`)
     run(`$git commit -qm 'Create registry.'`)
     run(`$git remote add origin $repo`)
+    @info "Created registry in directory $(path)"
 
     return path
 end
