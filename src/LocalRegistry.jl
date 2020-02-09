@@ -284,7 +284,6 @@ function update_package_data(pkg::Pkg.Types.Project, registry_path,
     update_deps_file(pkg, package_path)
 
     # Compatibilities file.
-    check_compatibilities(pkg)
     update_compat_file(pkg, package_path)
 
     return
@@ -341,27 +340,6 @@ function update_deps_file(pkg::Pkg.Types.Project, package_path)
 
     deps_data[pkg.version] = pkg.deps
     Compress.save(deps_file, deps_data)
-end
-
-function check_compatibilities(pkg::Pkg.Types.Project)
-    for (p, v) in pkg.compat
-        try
-            ver = Pkg.Types.semver_spec(v)
-            if p == "julia" && any(map(x->!isempty(intersect(Pkg.Types.VersionRange("0-0.6"),x)), ver.ranges))
-                err = "Julia version < 0.7 not allowed in `[compat]`"
-                @debug(err)
-                throw(err)
-            end
-        catch ex
-            if isa(ex, ArgumentError)
-                err = "Error in `[compat]`: $(ex.msg)"
-                @debug(err)
-                throw(err)
-            else
-                rethrow(ex)
-            end
-        end
-    end
 end
 
 function update_compat_file(pkg::Pkg.Types.Project, package_path)
