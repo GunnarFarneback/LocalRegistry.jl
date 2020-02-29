@@ -88,3 +88,35 @@ register(package)
 When adding a new version of a package, the registry can be
 omitted. The new version number is obtained from the `version` field
 of the package's `Project.toml` file.
+
+## Working with a private registry and/or private repositories
+
+If the registry needs to be private and/or privately hosted packages are 
+added to it, two additional steps are required to make the user experience simple.
+
+### 1. Set up persistent git auth that Julia recognizes
+
+Julia's internal git doesn't recognize `~/.ssh/config` settings, so one way is
+to set `SSH_PUB_KEY_PATH` and `SSH_KEY_PATH` environmental variables:
+
+In Juno, setting “Julia Options” > “Arguments” to:
+```
+SSH_PUB_KEY_PATH=~/.ssh/key.pub, SSH_KEY_PATH=~/.ssh/key
+```
+
+or directly launching julia:
+```
+$ SSH_PUB_KEY_PATH=~/.ssh/key.pub SSH_KEY_PATH=~/.ssh/key julia
+```
+or set them in `~/.bashrc`, for instance
+```
+export SSH_PUB_KEY_PATH=~/.ssh/key.pub
+export SSH_KEY_PATH=~/.ssh/key
+```
+
+### 2. Change Pkg to ssh mode
+Run the following to switch Pkg mode to the `git@github.co:...` ssh protocol
+```
+julia> Pkg.setprotocol!(protocol="ssh")
+```
+
