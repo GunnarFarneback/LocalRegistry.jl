@@ -115,8 +115,9 @@ export SSH_KEY_PATH=~/.ssh/key
 ```
 
 ### 2. Change Pkg to ssh mode
-Run the following to switch Pkg mode to the `git@github.co:...` ssh protocol
+Run the following to switch Julia's Pkg mode to the `git@github.com:...` ssh protocol
 ```
+julia> using Pkg
 julia> Pkg.setprotocol!(protocol="ssh")
 ```
 
