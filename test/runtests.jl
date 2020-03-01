@@ -47,8 +47,8 @@ register(FirstTest, registry_dir)
 register(FirstTest, registry_dir)
 @test check_result(registry_dir, "registry1")
 
-# Add 30 versions of the Flux project files and check against `registry2`.
-for n = 1:30
+# Add 29 versions of the Flux project files and check against `registry2`.
+for n = 1:29
     prepare_package(packages_dir, "Flux$(n).toml")
     using Flux
     register(Flux, registry_dir)
@@ -72,7 +72,7 @@ create_registry(registry_dir, "git@example.com:Julia/TestRegistry.git",
                 description = "For testing purposes only.",
                 uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369")
 project_files = vcat("FirstTest1.toml",
-                     ["Flux$(n).toml" for n = 1:30],
+                     ["Flux$(n).toml" for n = 1:29],
                      ["Images$(n).toml" for n = 1:15])
 Random.seed!(13)
 shuffle!(project_files)
