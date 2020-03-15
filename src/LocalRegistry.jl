@@ -229,7 +229,7 @@ function find_package_path(package_name::AbstractString)
     return pkg_path
 end
 
-function find_registry_path(registry::AbstractString, pkg)
+function find_registry_path(registry::AbstractString, pkg::Pkg.Types.Project)
     if length(splitpath(registry)) > 1
         return abspath(expanduser(registry))
     end
@@ -243,7 +243,7 @@ function find_registry_path(registry::AbstractString, pkg)
     return first(matching_registries).path
 end
 
-function find_registry_path(registry::Nothing, pkg)
+function find_registry_path(registry::Nothing, pkg::Pkg.Types.Project)
     all_registries = Pkg.Types.collect_registries()
 
     matching_registries = filter(all_registries) do reg_spec
