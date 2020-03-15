@@ -84,7 +84,11 @@ function compare_files(path1, path2)
     if endswith(path1, "Deps.toml") || endswith(path1, "Compat.toml")
         return Compress.load(path1) == Compress.load(path2)
     end
-    return read(path1) == read(path2)
+    return read_normalize_line_end(path1) == read_normalize_line_end(path2)
+end
+
+function read_normalize_line_end(path)
+    return replace(read(path, String), "\r\n" => "\n")
 end
 
 # Check that the deps and compat files can be read at all by a

@@ -143,23 +143,25 @@ pop!(LOAD_PATH)
 
 
 # Additional tests of `find_package_path` and `find_registry_path`.
-# TODO: Arrange so these tests can be run in a controlled
-# environment. Dependency on the General registry is brittle and makes
-# it difficult to test all code paths.
-using RegistryTools
-package_path = find_package_path(RegistryTools)
+Pkg.Registry.add(RegistrySpec(path = registry_dir))
+Pkg.develop(PackageSpec(path = joinpath(packages_dir, "FirstTest")))
+pkg"registry rm General"
+package_path = find_package_path(FirstTest)
 @test find_package_path(package_path) == package_path
 corrupt_path = joinpath(package_path, "no_such_dir")
 @test_throws ErrorException find_package_path(corrupt_path)
 # Unknown package.
-@test_throws ErrorException find_package_path("RegistryToolz")
-Pkg.develop(PackageSpec(path = package_path))
-@test find_package_path("RegistryTools") == package_path
+@test_throws ErrorException find_package_path("ZeroethTest")
+@test find_package_path("FirstTest") == package_path
 
-package_path = find_package_path("RegistryTools")
 pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
-@test find_registry_path("General", pkg) == joinpath(first(DEPOT_PATH),
-                                                     "registries", "General")
-@test_throws ErrorException find_registry_path("Special", pkg)
+@test find_registry_path("TestRegistry", pkg) == joinpath(first(DEPOT_PATH),
+                                                          "registries",
+                                                          "TestRegistry")
+@test_throws ErrorException find_registry_path("General", pkg)
 @test find_registry_path(nothing, pkg) == joinpath(first(DEPOT_PATH),
-                                                   "registries", "General")
+                                                   "registries", "TestRegistry")
+
+pkg"rm FirstTest"
+pkg"registry rm TestRegistry"
+pkg"registry add General"
