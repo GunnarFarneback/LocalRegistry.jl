@@ -146,6 +146,9 @@ pop!(LOAD_PATH)
 Pkg.Registry.add(RegistrySpec(path = registry_dir))
 Pkg.develop(PackageSpec(path = joinpath(packages_dir, "FirstTest")))
 pkg"registry rm General"
+create_registry("TestRegistry2", "", gitconfig = TEST_GITCONFIG)
+@test_throws ErrorException create_registry("TestRegistry2/", "",
+                                            gitconfig = TEST_GITCONFIG)
 package_path = find_package_path(FirstTest)
 @test find_package_path(package_path) == package_path
 corrupt_path = joinpath(package_path, "no_such_dir")
@@ -161,7 +164,11 @@ pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
 @test_throws ErrorException find_registry_path("General", pkg)
 @test find_registry_path(nothing, pkg) == joinpath(first(DEPOT_PATH),
                                                    "registries", "TestRegistry")
-
+register("FirstTest", "TestRegistry2",
+         repo = "file://$(packages_dir)/FirstTest",
+         gitconfig = TEST_GITCONFIG)
+@test_throws ErrorException find_registry_path(nothing, pkg)
 pkg"rm FirstTest"
 pkg"registry rm TestRegistry"
+pkg"registry rm TestRegistry2"
 pkg"registry add General"

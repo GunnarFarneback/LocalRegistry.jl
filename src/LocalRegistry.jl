@@ -51,7 +51,7 @@ function create_registry(name_or_path, repo; description = nothing,
         name = basename(dirname(path))
     end
     if isdir(path) || isfile(path)
-        throw("$path already exists.")
+        error("$path already exists.")
     end
     mkpath(path)
 
@@ -118,12 +118,12 @@ function register(package::Union{Module, AbstractString},
     package_path = find_package_path(package)
     pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
     if isnothing(pkg.name)
-        throw("$(package) does not have a Project.toml file")
+        error("$(package) does not have a Project.toml file")
     end
 
     registry_path = find_registry_path(registry, pkg)
     if LibGit2.isdirty(LibGit2.GitRepo(registry_path))
-        throw("Registry repo is dirty. Stash or commit files.")
+        error("Registry repo is dirty. Stash or commit files.")
     end
 
     # Compute the tree hash for the package.
@@ -269,8 +269,8 @@ end
 function get_remote_repo(package_path, gitconfig)
     git = gitcmd(package_path, gitconfig)
     remote_name = split(readchomp(`$git remote`), '\n')
-    length(remote_name) > 1 && throw("Repository has multiple remotes.")
-    remote_name[1] == "" && throw("Repository does not have a remote.")
+    length(remote_name) > 1 && error("Repository has multiple remotes.")
+    remote_name[1] == "" && error("Repository does not have a remote.")
     return readchomp(`$git remote get-url $(remote_name[1])`)
 end
 
