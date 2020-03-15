@@ -1,0 +1,9 @@
+name = "Broken"
+uuid = "5d777fcc-37eb-4348-a420-3b58597a27de"
+version = "0.1.1"
+
+[deps]
+Broken = "5d777fcc-37eb-4348-a420-3b58597a27de"
+
+[compat]
+julia = "1.1"
