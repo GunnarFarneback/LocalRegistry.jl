@@ -5,6 +5,11 @@ using Pkg
 
 include("utils.jl")
 
+const TEST_GITCONFIG = Dict(
+    "user.name" => "LocalRegistryTests",
+    "user.email" => "localregistrytests@example.com",
+)
+
 # The following tests are primarily regression tests - checking that
 # the results are the same as when the tests were written, regardless
 # of correctness.
@@ -35,24 +40,25 @@ registry_dir = joinpath(testdir, "TestRegistry")
 # Create a new registry.
 create_registry(registry_dir, "git@example.com:Julia/TestRegistry.git",
                 description = "For testing purposes only.",
-                uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369")
+                uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369",
+                gitconfig = TEST_GITCONFIG)
 
 # Add the FirstTest1 package and check against the stored `registry1`.
 prepare_package(packages_dir, "FirstTest1.toml")
 using FirstTest
-register(FirstTest, registry_dir)
+register(FirstTest, registry_dir, gitconfig = TEST_GITCONFIG)
 @test check_result(registry_dir, "registry1")
 
 # Reregister the same version of FirstTest to verify that nothing
 # happens,
-@test_logs (:info, "This version has already been registered and is unchanged.") register(FirstTest, registry_dir)
+@test_logs (:info, "This version has already been registered and is unchanged.") register(FirstTest, registry_dir, gitconfig = TEST_GITCONFIG)
 @test check_result(registry_dir, "registry1")
 
 # Add 29 versions of the Flux project files and check against `registry2`.
 for n = 1:29
     prepare_package(packages_dir, "Flux$(n).toml")
     using Flux
-    register(Flux, registry_dir)
+    register(Flux, registry_dir, gitconfig = TEST_GITCONFIG)
 end
 @test check_result(registry_dir, "registry2")
 
@@ -60,7 +66,7 @@ end
 for n = 1:15
     prepare_package(packages_dir, "Images$(n).toml")
     using Images
-    register(Images, registry_dir)
+    register(Images, registry_dir, gitconfig = TEST_GITCONFIG)
 end
 @test check_result(registry_dir, "registry3")
 
@@ -69,7 +75,8 @@ end
 registry_dir = joinpath(testdir, "test2", "TestRegistry")
 create_registry(registry_dir, "git@example.com:Julia/TestRegistry.git",
                 description = "For testing purposes only.",
-                uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369")
+                uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369",
+                gitconfig = TEST_GITCONFIG)
 project_files = vcat("FirstTest1.toml",
                      ["Flux$(n).toml" for n = 1:29],
                      ["Images$(n).toml" for n = 1:15])
@@ -79,48 +86,56 @@ for project_file in project_files
     prepare_package(packages_dir, project_file)
     package = match(r"[a-zA-Z]+", project_file).match
     # Register by path instead of module in this test.
-    register(joinpath(packages_dir, package), registry_dir)
+    register(joinpath(packages_dir, package), registry_dir,
+             gitconfig = TEST_GITCONFIG)
 end
 @test check_result(registry_dir, "registry3")
 
 # Trying to register an already existing version with different content.
 prepare_package(packages_dir, "Flux30.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Flux"),
-                                     registry_dir)
+                                     registry_dir, gitconfig = TEST_GITCONFIG)
 
 # Parse error in compat section.
 prepare_package(packages_dir, "Broken1.toml")
-@test_throws Pkg.Types.PkgError register(joinpath(packages_dir, "Broken"),
-                                         registry_dir)
-
+if VERSION < v"1.2"
+    @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
+                                         registry_dir,
+                                         gitconfig = TEST_GITCONFIG)
+else
+    @test_throws Pkg.Types.PkgError register(joinpath(packages_dir, "Broken"),
+                                             registry_dir,
+                                             gitconfig = TEST_GITCONFIG)
+end
 # Trying to change name (UUID remains).
 prepare_package(packages_dir, "Fluxx1.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Fluxx"),
-                                     registry_dir)
+                                     registry_dir, gitconfig = TEST_GITCONFIG)
 
 # Trying to change UUID.
 prepare_package(packages_dir, "Flux31.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Flux"),
-                                     registry_dir)
+                                     registry_dir, gitconfig = TEST_GITCONFIG)
 
 # Depends on itself.
 prepare_package(packages_dir, "Broken2.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                     registry_dir)
+                                     registry_dir, gitconfig = TEST_GITCONFIG)
 
 # Incorrect name of dependency.
 prepare_package(packages_dir, "Broken3.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                     registry_dir)
+                                     registry_dir, gitconfig = TEST_GITCONFIG)
 
 # TODO: This should really be an error but RegistryTools 1.3.0 doesn't catch it.
 # Incorrect UUID of dependency.
 prepare_package(packages_dir, "Broken4.toml")
-register(joinpath(packages_dir, "Broken"), registry_dir)
+register(joinpath(packages_dir, "Broken"), registry_dir,
+         gitconfig = TEST_GITCONFIG)
 
 # Incorrect UUID of stdlib.
 prepare_package(packages_dir, "Broken5.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                     registry_dir)
+                                     registry_dir, gitconfig = TEST_GITCONFIG)
 
 pop!(LOAD_PATH)
