@@ -143,32 +143,103 @@ pop!(LOAD_PATH)
 
 
 # Additional tests of `find_package_path` and `find_registry_path`.
+# Many of these have the purpose to cover error cases, making them
+# somewhat contrived. Another complicating factor is that some of the
+# call variants have to interact with the package environment,
+# including registries, of the running Julia process. Thus things will
+# become more than slightly messy.
+#
+# Warning: If something goes wrong and these tests are interupted, you
+# may end up with a broken state of registries. Recovery involves
+# doing one or more of the following operations:
+#
+# using Pkg
+# pkg"registry add General"
+# pkg"registry rm TestRegistry2"
+# pkg"registry rm TestRegistry"
+
+
+# Prepare by adding an stdlib package, adding the registry used in
+# previous tests, developing a package, and removing the General
+# registry. The last step is necessary to avoid potential and current
+# conflicts between General and package names used in these tests.
+pkg"add Base64"
 Pkg.Registry.add(RegistrySpec(path = registry_dir))
 Pkg.develop(PackageSpec(path = joinpath(packages_dir, "FirstTest")))
 pkg"registry rm General"
+
+# Directory already exists. Also tests code handling a trailing slash.
 create_registry("TestRegistry2", "", gitconfig = TEST_GITCONFIG)
 @test_throws ErrorException create_registry("TestRegistry2/", "",
                                             gitconfig = TEST_GITCONFIG)
+
+# Not a developed package. (Version 1.1 handles this a bit differently
+# but it is nicer to do this with a stdlib package since someone who
+# runs these tests plausibly could have AutoHashEquals as a developed
+# package.
+if VERSION < v"1.2"
+    @test_throws ErrorException find_package_path("AutoHashEquals")
+else
+    @test_throws ErrorException find_package_path("Base64")
+end
+
+# Not a registered package.
+pkg = Pkg.Types.Project(Dict("name" => "UUIDs",
+                             "uuid" => "cf7118a7-6976-5b1a-9a39-7adc72f591a4"))
+@test_throws ErrorException find_registry_path(nothing, pkg)
+
+# Find package by module and path.
 package_path = find_package_path(FirstTest)
 @test find_package_path(package_path) == package_path
-corrupt_path = joinpath(package_path, "no_such_dir")
-@test_throws ErrorException find_package_path(corrupt_path)
-# Unknown package.
-@test_throws ErrorException find_package_path("ZeroethTest")
+
+# Find package by name.
 @test find_package_path("FirstTest") == package_path
 
+# Not a package path.
+corrupt_path = joinpath(package_path, "no_such_dir")
+@test_throws ErrorException find_package_path(corrupt_path)
+
+# Unknown package.
+@test_throws ErrorException find_package_path("ZeroethTest")
+
+# Find a registry by name.
 pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
 @test find_registry_path("TestRegistry", pkg) == joinpath(first(DEPOT_PATH),
                                                           "registries",
                                                           "TestRegistry")
+
+# The named registry does not contain the package.
 @test_throws ErrorException find_registry_path("General", pkg)
+
+# Find which registry contains a package.
 @test find_registry_path(nothing, pkg) == joinpath(first(DEPOT_PATH),
                                                    "registries", "TestRegistry")
+
+# More than one registry contains the package.
 register("FirstTest", "TestRegistry2",
          repo = "file://$(packages_dir)/FirstTest",
          gitconfig = TEST_GITCONFIG)
 @test_throws ErrorException find_registry_path(nothing, pkg)
+
+# Dirty the registry repository and try to register a package.
+registry_path = find_registry_path("TestRegistry2", pkg)
+filename = joinpath(registry_path, "Registry.toml")
+open(filename, "a") do io
+    write(io, "\n")
+end
+@test_throws ErrorException register("FirstTest", "TestRegistry2",
+                                     gitconfig = TEST_GITCONFIG)
+
+# Remove Project.toml from a package and try to register.
+rm(joinpath(package_path, "Project.toml"))
+@test_throws ErrorException register("FirstTest", "TestRegistry2",
+                                     gitconfig = TEST_GITCONFIG)
+
+# Remove the added and developed packages.
 pkg"rm FirstTest"
+pkg"rm Base64"
+
+# Clean up the registries.
 pkg"registry rm TestRegistry"
 pkg"registry rm TestRegistry2"
 pkg"registry add General"
