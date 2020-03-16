@@ -151,7 +151,6 @@ function register(package::Union{Module, AbstractString},
     try
         check_and_update_registry_files(pkg, package_repo, tree_hash,
                                         registry_path, String[], status)
-        haserror(status)
         if !haserror(status)
             if commit
                 commit_registry(pkg, package_path, package_repo, tree_hash, git)
