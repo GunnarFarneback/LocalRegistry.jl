@@ -136,9 +136,16 @@ function register(package::Union{Module, AbstractString},
         return
     end
 
-    # Use the `repo` argument or check for the git remote if not provided.
+    # Use the `repo` argument or, if this is a new package
+    # registration, check for the git remote. If `repo` is `nothing`
+    # and this is an existing package, the repository information will
+    # not be updated.
     if isnothing(repo)
-        package_repo = get_remote_repo(package_path, gitconfig)
+        if !has_package(registry_path, pkg)
+            package_repo = get_remote_repo(package_path, gitconfig)
+        else
+            package_repo = ""
+        end
     else
         package_repo = repo
     end
@@ -228,7 +235,11 @@ function find_package_path(package_name::AbstractString)
     return pkg_path
 end
 
-function find_registry_path(registry::AbstractString, pkg::Pkg.Types.Project)
+function find_registry_path(registry::AbstractString, ::Pkg.Types.Project)
+    return find_registry_path(registry)
+end
+
+function find_registry_path(registry::AbstractString)
     if length(splitpath(registry)) > 1
         return abspath(expanduser(registry))
     end
@@ -242,7 +253,7 @@ function find_registry_path(registry::AbstractString, pkg::Pkg.Types.Project)
     return first(matching_registries).path
 end
 
-function find_registry_path(registry::Nothing, pkg::Pkg.Types.Project)
+function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
     all_registries = Pkg.Types.collect_registries()
 
     matching_registries = filter(all_registries) do reg_spec
@@ -258,6 +269,11 @@ function find_registry_path(registry::Nothing, pkg::Pkg.Types.Project)
     end
 
     return first(matching_registries).path
+end
+
+function has_package(registry_path, pkg::Pkg.Types.Project)
+    registry = Pkg.Types.read_registry(joinpath(registry_path, "Registry.toml"))
+    return haskey(registry["packages"], string(pkg.uuid))
 end
 
 function get_tree_hash(package_path, gitconfig)
