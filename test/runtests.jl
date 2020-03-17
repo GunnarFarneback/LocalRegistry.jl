@@ -235,6 +235,17 @@ pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
 @test find_registry_path(nothing, pkg) == joinpath(first(DEPOT_PATH),
                                                    "registries", "TestRegistry")
 
+# Workaround for bad `mtime` resolution of 1 second on MacOS workers
+# on Travis.
+#
+# The issue is that `read_registry` caches its results with respect to
+# the file `mtime`. Since `read_registry` is called from within
+# `register`, the old data will be read into the cache. If the new
+# data is written close enough to the previous registry update so that
+# `mtime` does not change, subsequent `read_registry` will keep using
+# the old data from the cache.
+sleep(1)
+
 # More than one registry contains the package.
 register("FirstTest", "TestRegistry2",
          repo = "file://$(packages_dir)/FirstTest",
