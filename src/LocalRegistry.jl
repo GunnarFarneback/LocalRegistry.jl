@@ -108,7 +108,7 @@ by `package`.
     register(package, registry; commit = true, repo = nothing, gitconfig = Dict())
 
 * `commit`: If `false`, only make the changes to the registry but do not commit.
-* `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package.
+* `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 """
 function register(package::Union{Module, AbstractString},

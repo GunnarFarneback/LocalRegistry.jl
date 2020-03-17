@@ -55,7 +55,7 @@ pkg"registry add <repository url>"
 ```
 This only needs to be done once per Julia installation.
 
-## Add a Package
+## Register a Package
 
 ```
 using LocalRegistry
@@ -78,7 +78,7 @@ Notes:
 * There is no checking that the dependencies are available in any
   registry.
 
-## Add a New Version of a Package
+## Register a New Version of a Package
 
 ```
 using LocalRegistry
