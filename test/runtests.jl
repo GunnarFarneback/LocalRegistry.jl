@@ -139,6 +139,26 @@ prepare_package(packages_dir, "Broken5.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
                                      registry_dir, gitconfig = TEST_GITCONFIG)
 
+# Change the git remote before registration and verify that the
+# registered repo is not changed.
+prepare_package(packages_dir, "Flux32.toml")
+package_dir = joinpath(packages_dir, "Flux")
+git = gitcmd(package_dir, TEST_GITCONFIG)
+package_file = joinpath(registry_dir, "F", "Flux", "Package.toml")
+old_repo = TOML.parsefile(package_file)["repo"]
+new_repo = "https://example.com/Julia/Flux.jl.git"
+run(`$git remote set-url origin $(new_repo)`)
+register(joinpath(packages_dir, "Flux"), registry_dir,
+         gitconfig = TEST_GITCONFIG)
+@test TOML.parsefile(package_file)["repo"] == old_repo
+
+# Register with explicit repo argument and verify that the registered
+# repo is updated.
+prepare_package(packages_dir, "Flux33.toml")
+register(joinpath(packages_dir, "Flux"), registry_dir, repo = new_repo,
+         gitconfig = TEST_GITCONFIG)
+@test TOML.parsefile(package_file)["repo"] == new_repo
+
 pop!(LOAD_PATH)
 
 
@@ -204,16 +224,27 @@ corrupt_path = joinpath(package_path, "no_such_dir")
 
 # Find a registry by name.
 pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
-@test find_registry_path("TestRegistry", pkg) == joinpath(first(DEPOT_PATH),
-                                                          "registries",
-                                                          "TestRegistry")
+@test find_registry_path("TestRegistry") == joinpath(first(DEPOT_PATH),
+                                                     "registries",
+                                                     "TestRegistry")
 
-# The named registry does not contain the package.
+# The named registry does not exist.
 @test_throws ErrorException find_registry_path("General", pkg)
 
 # Find which registry contains a package.
 @test find_registry_path(nothing, pkg) == joinpath(first(DEPOT_PATH),
                                                    "registries", "TestRegistry")
+
+# Workaround for bad `mtime` resolution of 1 second on MacOS workers
+# on Travis.
+#
+# The issue is that `read_registry` caches its results with respect to
+# the file `mtime`. Since `read_registry` is called from within
+# `register`, the old data will be read into the cache. If the new
+# data is written close enough to the previous registry update so that
+# `mtime` does not change, subsequent `read_registry` will keep using
+# the old data from the cache.
+sleep(1)
 
 # More than one registry contains the package.
 register("FirstTest", "TestRegistry2",
@@ -222,7 +253,7 @@ register("FirstTest", "TestRegistry2",
 @test_throws ErrorException find_registry_path(nothing, pkg)
 
 # Dirty the registry repository and try to register a package.
-registry_path = find_registry_path("TestRegistry2", pkg)
+registry_path = find_registry_path("TestRegistry2")
 filename = joinpath(registry_path, "Registry.toml")
 open(filename, "a") do io
     write(io, "\n")
