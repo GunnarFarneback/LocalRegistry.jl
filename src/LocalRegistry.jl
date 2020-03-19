@@ -21,24 +21,31 @@ using Pkg: Pkg, TOML
 
 export create_registry, register
 
+# Note: The `uuid` keyword argument is intentionally omitted from the
+# documentation string since it's not intended for users.
 """
-    create_registry(name, repo; description = nothing)
-    create_registry(path, repo; description = nothing)
+    create_registry(name, repo)
+    create_registry(path, repo)
 
 Create a registry with the given `name` or at the local directory
-`path`, and with repository URL `repo`. Optionally add a description
-of the purpose of the registry with the keyword argument
-`description`. The first argument is interpreted as a path if it has
-more than one path component and otherwise as a name. If a path is
-given, the last path component is used as the name of the registry. If
-a name is given, it is created in the standard registry location. In
-both cases the registry path must not previously exist.
+`path`, and with repository URL `repo`. The first argument is
+interpreted as a path if it has more than one path component and
+otherwise as a name. If a path is given, the last path component is
+used as the name of the registry. If a name is given, it is created in
+the standard registry location. In both cases the registry path must
+not previously exist.
 
-Note: This will only prepare the registry locally. Review the result
-and `git push` it manually.
+*Keyword arguments*
+
+    create_registry(...; description = nothing, push = false, gitconfig = Dict())
+
+* `description`: Optional description of the purpose of the registry.
+* `push`: If `false`, the registry will only be prepared locally. Review the result and `git push` it manually.
+* `gitconfig`: Optional configuration parameters for the `git` command.
 """
 function create_registry(name_or_path, repo; description = nothing,
-                         gitconfig::Dict = Dict(), uuid = nothing)
+                         gitconfig::Dict = Dict(), uuid = nothing,
+                         push = false)
     if length(splitpath(name_or_path)) > 1
         path = abspath(expanduser(name_or_path))
     else
@@ -70,6 +77,9 @@ function create_registry(name_or_path, repo; description = nothing,
     run(`$git add Registry.toml`)
     run(`$git commit -qm 'Create registry.'`)
     run(`$git remote add origin $repo`)
+    if push
+        run(`$git push -u origin master`)
+    end
     @info "Created registry in directory $(path)"
 
     return path
@@ -87,9 +97,13 @@ number and other information is obtained from the package's
 Register a new version of `package`.  The version number is obtained
 from the package's `Project.toml`.
 
-Note: In both cases this will only update the registry locally. Review
-the result and `git push` it manually. The package must live in a git
-working copy, e.g. having been cloned by `Pkg.develop`.
+Notes:
+ * By default this will, in both cases, only update the registry
+   locally. Review the result and `git push` it manually. This step
+   can be made automatically with the keyword argument `push`
+   described below.
+ * The package must live in a git working copy, e.g. having been
+   cloned by `Pkg.develop`.
 
 `package` can be specified in the following ways:
 * By package name. The package must be available in the active `Pkg`
@@ -105,15 +119,18 @@ by `package`.
 
 *Keyword arguments*
 
-    register(package, registry; commit = true, repo = nothing, gitconfig = Dict())
+    register(package, registry; commit = true, push = false, repo = nothing,
+             gitconfig = Dict())
 
 * `commit`: If `false`, only make the changes to the registry but do not commit.
+* `push`: If `true`, push the changes to the registry repository automatically. Ignored if `commit` is false.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 """
 function register(package::Union{Module, AbstractString},
                   registry::Union{Nothing, AbstractString} = nothing;
-                  repo = nothing, commit = true, gitconfig::Dict = Dict())
+                  commit = true, push = false, repo = nothing,
+                  gitconfig::Dict = Dict())
     # Find and read the `Project.toml` for the package.
     package_path = find_package_path(package)
     pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
@@ -154,6 +171,7 @@ function register(package::Union{Module, AbstractString},
     clean_registry = true
 
     git = gitcmd(registry_path, gitconfig)
+    HEAD = readchomp(`$git rev-parse --verify HEAD`)
     status = ReturnStatus()
     try
         check_and_update_registry_files(pkg, package_repo, tree_hash,
@@ -161,12 +179,15 @@ function register(package::Union{Module, AbstractString},
         if !haserror(status)
             if commit
                 commit_registry(pkg, package_path, package_repo, tree_hash, git)
+                if push
+                    run(`$git push`)
+                end
             end
             clean_registry = false
         end
     finally
         if clean_registry
-            run(`$git reset --hard`)
+            run(`$git reset --hard $(HEAD)`)
             run(`$git clean -f -d`)
         end
     end

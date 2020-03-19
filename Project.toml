@@ -1,7 +1,7 @@
 name = "LocalRegistry"
 uuid = "89398ba2-070a-4b16-a995-9893c55d93cf"
 authors = ["Gunnar Farnebäck <gunnar@lysator.liu.se>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
