@@ -29,7 +29,7 @@ you are good to go.
 
 ```
 using Pkg
-pkg"add https://github.com/GunnarFarneback/LocalRegistry.jl"
+pkg"add LocalRegistry"
 ```
 
 ## Create Registry
