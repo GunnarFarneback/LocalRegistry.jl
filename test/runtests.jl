@@ -183,7 +183,14 @@ register(joinpath(packages_dir, "Flux"), registry_dir, repo = new_repo,
 
 pop!(LOAD_PATH)
 
-
+# Register a package in a subdirectory of a git repository. Also add
+# some dirt outside the subdiretory to verify that it is ignored.
+prepare_package(packages_dir, "SubdirTest1.toml", "subdir")
+write(joinpath(packages_dir, "SubdirTest", "README.md"), "dirty")
+register(joinpath(packages_dir, "SubdirTest", "subdir"), registry_dir,
+         repo = new_repo, gitconfig = TEST_GITCONFIG, push = false)
+package_file = joinpath(registry_dir, "S", "SubdirTest", "Package.toml")
+@test TOML.parsefile(package_file)["subdir"] == "subdir"
 
 # Test automatic push functionality. The sequence of events is:
 # 1. Create a bare "upstream" repository.
@@ -288,6 +295,15 @@ register("Multibreak", "TestRegistry2",
 # Dirty the registry repository and try to register a package.
 registry_path = find_registry_path("TestRegistry2")
 filename = joinpath(registry_path, "Registry.toml")
+open(filename, "a") do io
+    write(io, "\n")
+end
+@test_throws ErrorException register("Multibreak", "TestRegistry2",
+                                     gitconfig = TEST_GITCONFIG, push = false)
+
+# Dirty the package repository and try to register the package.
+package_path = find_package_path("Multibreak")
+filename = joinpath(package_path, "README.md")
 open(filename, "a") do io
     write(io, "\n")
 end
