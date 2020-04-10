@@ -11,6 +11,20 @@ const TEST_GITCONFIG = Dict(
 
 include("utils.jl")
 
+# Since these tests will need to modify active registries and we don't
+# want interference from, e.g. the General registry, use a temporary
+# DEPOT_PATH. But first add some packages while we have the General
+# registry available. These will be used for some tests later.
+pkg"add AutoHashEquals"
+pkg"dev --local Multibreak"
+empty!(DEPOT_PATH)
+depot_path = mktempdir(@__DIR__)
+push!(DEPOT_PATH, depot_path)
+
+# We don't want Pkg to try to update our local registries since they
+# contain fake URLs.
+Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
+
 # The following tests are primarily regression tests - checking that
 # the results are the same as when the tests were written, regardless
 # of correctness.
@@ -195,27 +209,16 @@ register(joinpath(packages_dir, "FirstTest"), registry_push_dir,
 # Many of these have the purpose to cover error cases, making them
 # somewhat contrived. Another complicating factor is that some of the
 # call variants have to interact with the package environment,
-# including registries, of the running Julia process. Thus things will
-# become more than slightly messy.
-#
-# Warning: If something goes wrong and these tests are interupted, you
-# may end up with a broken state of registries. Recovery involves
-# doing one or more of the following operations:
-#
-# using Pkg
-# pkg"registry add General"
-# pkg"registry rm TestRegistry2"
-# pkg"registry rm TestRegistry"
+# including registries, of the running Julia process.
 
-
-# Prepare by adding an stdlib package, adding the registry used in
-# previous tests, developing a package, and removing the General
-# registry. The last step is necessary to avoid potential and current
-# conflicts between General and package names used in these tests.
-pkg"add Base64"
+# Prepare by adding the registry used in previous tests.
 Pkg.Registry.add(RegistrySpec(path = registry_dir))
-Pkg.develop(PackageSpec(path = joinpath(packages_dir, "FirstTest")))
-pkg"registry rm General"
+
+# Use Multibreak as Guinea pig. The sleep is a Travis workaround. See
+# a later comment.
+sleep(1)
+register("Multibreak", "TestRegistry",
+         push = false, gitconfig = TEST_GITCONFIG)
 
 # Directory already exists. Also tests code handling a trailing slash.
 create_registry("TestRegistry2", "", gitconfig = TEST_GITCONFIG, push = false)
@@ -223,15 +226,8 @@ create_registry("TestRegistry2", "", gitconfig = TEST_GITCONFIG, push = false)
                                             gitconfig = TEST_GITCONFIG,
                                             push = false)
 
-# Not a developed package. (Version 1.1 handles this a bit differently
-# but it is nicer to do this with a stdlib package since someone who
-# runs these tests plausibly could have AutoHashEquals as a developed
-# package.
-if VERSION < v"1.2"
-    @test_throws ErrorException find_package_path("AutoHashEquals")
-else
-    @test_throws ErrorException find_package_path("Base64")
-end
+# Not a developed package.
+@test_throws ErrorException find_package_path("AutoHashEquals")
 
 # Not a registered package.
 pkg = Pkg.Types.Project(Dict("name" => "UUIDs",
@@ -239,11 +235,18 @@ pkg = Pkg.Types.Project(Dict("name" => "UUIDs",
 @test_throws ErrorException find_registry_path(nothing, pkg)
 
 # Find package by module and path.
-package_path = find_package_path(FirstTest)
+using Multibreak
+package_path = find_package_path(Multibreak)
 @test find_package_path(package_path) == package_path
 
 # Find package by name.
-@test find_package_path("FirstTest") == package_path
+if !Base.Sys.isapple()
+    @test find_package_path("Multibreak") == package_path
+else
+    # Workaround a Travis macOS failure where presumably the same path
+    # is obtained but prefixed by `/private`.
+    @test occursin(package_path, find_package_path("Multibreak"))
+end
 
 # Not a package path.
 corrupt_path = joinpath(package_path, "no_such_dir")
@@ -277,7 +280,7 @@ pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
 sleep(1)
 
 # More than one registry contains the package.
-register("FirstTest", "TestRegistry2",
+register("Multibreak", "TestRegistry2",
          repo = "file://$(packages_dir)/FirstTest",
          gitconfig = TEST_GITCONFIG, push = false)
 @test_throws ErrorException find_registry_path(nothing, pkg)
@@ -288,19 +291,17 @@ filename = joinpath(registry_path, "Registry.toml")
 open(filename, "a") do io
     write(io, "\n")
 end
-@test_throws ErrorException register("FirstTest", "TestRegistry2",
+@test_throws ErrorException register("Multibreak", "TestRegistry2",
                                      gitconfig = TEST_GITCONFIG, push = false)
 
 # Remove Project.toml from a package and try to register.
-rm(joinpath(package_path, "Project.toml"))
-@test_throws ErrorException register("FirstTest", "TestRegistry2",
+mv(joinpath(package_path, "Project.toml"),
+   joinpath(package_path, "Project.txt"))
+@test_throws ErrorException register("Multibreak", "TestRegistry2",
                                      gitconfig = TEST_GITCONFIG, push = false)
+mv(joinpath(package_path, "Project.txt"),
+   joinpath(package_path, "Project.toml"))
 
-# Remove the added and developed packages.
-pkg"rm FirstTest"
-pkg"rm Base64"
-
-# Clean up the registries.
-pkg"registry rm TestRegistry"
-pkg"registry rm TestRegistry2"
-pkg"registry add General"
+if VERSION < v"1.2"
+    rm(depot_path, recursive = true)
+end

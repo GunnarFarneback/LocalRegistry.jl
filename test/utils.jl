@@ -97,12 +97,23 @@ end
 function sanity_check_registry(path)
     registry = TOML.parsefile(joinpath(path, "Registry.toml"))
     for (uuid, package) in registry["packages"]
-        deps_file = joinpath(path, package["path"], "Deps.toml")
-        compat_file = joinpath(path, package["path"], "Compat.toml")
-        deps_data = Pkg.Operations.load_package_data_raw(Pkg.Types.UUID,
-                                                         deps_file)
-        compat_data = Pkg.Operations.load_package_data_raw(Pkg.Types.VersionSpec,
-                                                           compat_file)
+        package_path = joinpath(path, package["path"])
+        deps_file = joinpath(package_path, "Deps.toml")
+        compat_file = joinpath(package_path, "Compat.toml")
+        if isdefined(Pkg.Operations, :load_package_data_raw)
+            deps_data = Pkg.Operations.load_package_data_raw(Pkg.Types.UUID,
+                                                             deps_file)
+            compat_data = Pkg.Operations.load_package_data_raw(Pkg.Types.VersionSpec,
+                                                               compat_file)
+        else
+            version_info = Pkg.Operations.load_versions(package_path;
+                                                        include_yanked = false)
+            versions = sort!(collect(keys(version_info)))
+            deps_data = Pkg.Operations.load_package_data(Pkg.Types.UUID,
+                                                         deps_file, versions)
+            compat_data = Pkg.Operations.load_package_data(Pkg.Types.VersionSpec,
+                                                           compat_file, versions)
+        end
     end
     
     return true

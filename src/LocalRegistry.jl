@@ -252,6 +252,10 @@ function find_package_path(package_name::AbstractString)
     pkg_path = ctx.env.manifest[pkg_uuid].path
     if isnothing(pkg_path)
         error("Package must be developed to be registered.")
+    elseif !isabspath(pkg_path)
+        # If the package is developed with --local, pkg_path is
+        # relative to the project path.
+        pkg_path = joinpath(dirname(ctx.env.manifest_file), pkg_path)
     end
     return pkg_path
 end
@@ -280,6 +284,8 @@ function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
     matching_registries = filter(all_registries) do reg_spec
         reg_data = Pkg.Types.read_registry(joinpath(reg_spec.path,
                                                     "Registry.toml"))
+        @show reg_spec
+        @show reg_data
         haskey(reg_data["packages"], string(pkg.uuid))
     end
 
