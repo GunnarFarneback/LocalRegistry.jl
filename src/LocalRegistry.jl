@@ -16,7 +16,6 @@ using RegistryTools: RegistryTools, gitcmd, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
                      find_registered_version
 using UUIDs: uuid4
-using LibGit2
 using Pkg: Pkg, TOML
 
 export create_registry, register
@@ -137,14 +136,22 @@ function register(package::Union{Module, AbstractString},
     if isnothing(pkg.name)
         error("$(package) does not have a Project.toml file")
     end
-
-    registry_path = find_registry_path(registry, pkg)
-    if LibGit2.isdirty(LibGit2.GitRepo(registry_path))
-        error("Registry repo is dirty. Stash or commit files.")
+    # If the package directory is dirty, a different version could be
+    # present in Project.toml.
+    if is_dirty(package_path, gitconfig)
+        error("Package directory is dirty. Stash or commit files.")
     end
 
-    # Compute the tree hash for the package.
-    tree_hash = get_tree_hash(package_path, gitconfig)
+    registry_path = find_registry_path(registry, pkg)
+    if is_dirty(registry_path, gitconfig)
+        error("Registry directory is dirty. Stash or commit files.")
+    end
+
+    # Compute the tree hash for the package and the subdirectory
+    # location within the git repository. For normal packages living
+    # at the top level of the repository, `subdir` will be the empty
+    # string.
+    tree_hash, subdir = get_tree_hash(package_path, gitconfig)
 
     # Check if this exact package has already been registered. Do
     # nothing and don't error in that case.
@@ -167,7 +174,7 @@ function register(package::Union{Module, AbstractString},
         package_repo = repo
     end
 
-    @info "Registering package" package_path registry_path package_repo uuid=pkg.uuid version=pkg.version tree_hash
+    @info "Registering package" package_path registry_path package_repo uuid=pkg.uuid version=pkg.version tree_hash subdir
     clean_registry = true
 
     git = gitcmd(registry_path, gitconfig)
@@ -175,7 +182,8 @@ function register(package::Union{Module, AbstractString},
     status = ReturnStatus()
     try
         check_and_update_registry_files(pkg, package_repo, tree_hash,
-                                        registry_path, String[], status)
+                                        registry_path, String[], status,
+                                        subdir = subdir)
         if !haserror(status)
             if commit
                 commit_registry(pkg, package_path, package_repo, tree_hash, git)
@@ -224,6 +232,16 @@ function explain_registration_error(status)
     end
 end
 
+# This does the same thing as `LibGit2.isdirty(LibGit2.GitRepo(path))`
+# but also works when `path` is a subdirectory of a git
+# repository. Only dirt within the subdirectory is considered.
+function is_dirty(path, gitconfig)
+    git = gitcmd(path, gitconfig)
+    # TODO: There should be no need for the `-u` option but without it
+    # a bogus diff is reported in the tests.
+    return !isempty(read(`$git diff-index -u HEAD -- .`))
+end
+
 # If the package is provided as a module, directly find the package
 # path from the loaded code. This works both if the module is loaded
 # from the current package environment or found in LOAD_PATH.
@@ -257,6 +275,12 @@ function find_package_path(package_name::AbstractString)
         # relative to the project path.
         pkg_path = joinpath(dirname(ctx.env.manifest_file), pkg_path)
     end
+
+    # `pkg_path` might be a relative path, in which case it is
+    # relative to the directory of Manifest.toml. If `pkg_path`
+    # already is an absolute path, this call does not affect it.
+    pkg_path = abspath(dirname(ctx.env.manifest_file), pkg_path)
+
     return pkg_path
 end
 
@@ -284,8 +308,6 @@ function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
     matching_registries = filter(all_registries) do reg_spec
         reg_data = Pkg.Types.read_registry(joinpath(reg_spec.path,
                                                     "Registry.toml"))
-        @show reg_spec
-        @show reg_data
         haskey(reg_data["packages"], string(pkg.uuid))
     end
 
@@ -305,7 +327,13 @@ end
 
 function get_tree_hash(package_path, gitconfig)
     git = gitcmd(package_path, gitconfig)
-    return read(`$git log --pretty=format:%T -1`, String)
+    subdir = readchomp(`$git rev-parse --show-prefix`)
+    tree_hash = readchomp(`$git rev-parse HEAD:$subdir`)
+    # Get rid of trailing slash.
+    if isempty(basename(subdir))
+        subdir = dirname(subdir)
+    end
+    return tree_hash, subdir
 end
 
 function get_remote_repo(package_path, gitconfig)

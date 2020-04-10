@@ -7,19 +7,23 @@ using Pkg: Pkg, TOML
 # Strictly speaking it is only the "Project.toml" file and the src
 # file that matter. Additional files are added to make the set up
 # somewhat more normal looking.
-function prepare_package(packages_dir, project_file)
+function prepare_package(packages_dir, project_file, subdir = "")
     project_file = joinpath(@__DIR__, "project_files", project_file)
     project_data = TOML.parsefile(project_file)
     name = project_data["name"]
     version = project_data["version"]
     # Fake repository URL.
     repo = "git@example.com:Julia/$(name).jl.git"
-    package_dir = joinpath(packages_dir, name)
+    top_dir = joinpath(packages_dir, name)
+    package_dir = joinpath(top_dir, subdir)
     mkpath(package_dir)
     mkpath(joinpath(package_dir, "src"))
     mkpath(joinpath(package_dir, "test"))
-    git = gitcmd(package_dir, TEST_GITCONFIG)
-    if !isdir(joinpath(package_dir, ".git"))
+    if !isempty(subdir)
+        write(joinpath(top_dir, "README.md"), "# Top Level README")
+    end
+    git = gitcmd(top_dir, TEST_GITCONFIG)
+    if !isdir(joinpath(top_dir, ".git"))
         run(`$(git) init -q`)
         run(`$git remote add origin $repo`)
     end
