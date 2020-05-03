@@ -11,6 +11,12 @@ more automated but GitHub-centric workflow with either the General
 registry or a local registry, see
 [PkgDev](https://github.com/JuliaLang/PkgDev.jl).
 
+For serving local packages through a [Package
+Server](https://github.com/JuliaLang/Pkg.jl/issues/1377) see the
+companion package
+[LocalPackageServer](https://github.com/GunnarFarneback/LocalPackageServer.jl).
+
+
 ## Compatibility
 
 This package requires Julia 1.1 or later.
