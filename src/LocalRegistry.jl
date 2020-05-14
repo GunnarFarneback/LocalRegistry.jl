@@ -130,12 +130,20 @@ function register(package::Union{Module, AbstractString},
                   registry::Union{Nothing, AbstractString} = nothing;
                   commit = true, push = false, repo = nothing,
                   gitconfig::Dict = Dict())
-    # Find and read the `Project.toml` for the package.
+    # Find and read the `Project.toml` for the package. First look for
+    # the alternative `JuliaProject.toml`.
     package_path = find_package_path(package)
-    pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
-    if isnothing(pkg.name)
-        error("$(package) does not have a Project.toml file")
+    local pkg
+    for project_file in Base.project_names
+        pkg = Pkg.Types.read_project(joinpath(package_path, project_file))
+        if !isnothing(pkg.name)
+            break
+        end
     end
+    if isnothing(pkg.name)
+        error("$(package) does not have a Project.toml or JuliaProject.toml file")
+    end
+
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
     if is_dirty(package_path, gitconfig)

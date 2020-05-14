@@ -184,13 +184,20 @@ register(joinpath(packages_dir, "Flux"), registry_dir, repo = new_repo,
 pop!(LOAD_PATH)
 
 # Register a package in a subdirectory of a git repository. Also add
-# some dirt outside the subdiretory to verify that it is ignored.
+# some dirt outside the subdirectory to verify that it is ignored.
 prepare_package(packages_dir, "SubdirTest1.toml", "subdir")
 write(joinpath(packages_dir, "SubdirTest", "README.md"), "dirty")
 register(joinpath(packages_dir, "SubdirTest", "subdir"), registry_dir,
-         repo = new_repo, gitconfig = TEST_GITCONFIG, push = false)
+         gitconfig = TEST_GITCONFIG, push = false)
 package_file = joinpath(registry_dir, "S", "SubdirTest", "Package.toml")
 @test TOML.parsefile(package_file)["subdir"] == "subdir"
+
+# Register a package with a JuliaProject.toml rather than a Project.toml.
+prepare_package(packages_dir, "JuliaProjectTest1.toml",
+                use_julia_project = true)
+register(joinpath(packages_dir, "JuliaProjectTest"), registry_dir,
+         gitconfig = TEST_GITCONFIG, push = false)
+@test isfile(joinpath(registry_dir, "J", "JuliaProjectTest", "Package.toml"))
 
 # Test automatic push functionality. The sequence of events is:
 # 1. Create a bare "upstream" repository.
