@@ -7,7 +7,8 @@ using Pkg: Pkg, TOML
 # Strictly speaking it is only the "Project.toml" file and the src
 # file that matter. Additional files are added to make the set up
 # somewhat more normal looking.
-function prepare_package(packages_dir, project_file, subdir = "")
+function prepare_package(packages_dir, project_file, subdir = "";
+                         use_julia_project = false)
     project_file = joinpath(@__DIR__, "project_files", project_file)
     project_data = TOML.parsefile(project_file)
     name = project_data["name"]
@@ -27,7 +28,17 @@ function prepare_package(packages_dir, project_file, subdir = "")
         run(`$(git) init -q`)
         run(`$git remote add origin $repo`)
     end
-    write(joinpath(package_dir, "Project.toml"), read(project_file, String))
+    if use_julia_project
+        project = read(project_file, String)
+        write(joinpath(package_dir, "JuliaProject.toml"), project)
+        # Write a corrupted Project.toml as well to test that the
+        # right file is chosen. (This makes an assumption of the
+        # package name used for this case.)
+        write(joinpath(package_dir, "Project.toml"),
+              replace(project, "JuliaProjectTest" => "ProjectTest"))
+    else
+        write(joinpath(package_dir, "Project.toml"), read(project_file, String))
+    end
     write(joinpath(package_dir, "README.md"), "# $(name)\n")
     write(joinpath(package_dir, "LICENSE"), "$(name) is in the public domain\n")
     write(joinpath(package_dir, "src", "$(name).jl"), "module $(name)\nend\n")
