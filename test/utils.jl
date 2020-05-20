@@ -121,7 +121,8 @@ function sanity_check_registry(path)
             compat_data = Pkg.Operations.load_package_data_raw(Pkg.Types.VersionSpec,
                                                                compat_file)
         else
-            version_info = Pkg.Operations.load_versions(package_path;
+            ctx = Pkg.Types.Context()
+            version_info = Pkg.Operations.load_versions(ctx, package_path;
                                                         include_yanked = false)
             versions = sort!(collect(keys(version_info)))
             deps_data = Pkg.Operations.load_package_data(Pkg.Types.UUID,
