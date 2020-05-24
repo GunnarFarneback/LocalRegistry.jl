@@ -14,11 +14,13 @@ module LocalRegistry
 
 using RegistryTools: RegistryTools, gitcmd, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
-                     find_registered_version
+                     find_registered_version, parse_registry
 using UUIDs: uuid4
 using Pkg: Pkg, TOML
 
 export create_registry, register
+
+include("merge.jl")
 
 # Note: The `uuid` keyword argument is intentionally omitted from the
 # documentation string since it's not intended for users.

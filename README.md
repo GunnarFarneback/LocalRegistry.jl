@@ -100,3 +100,4 @@ of the package's `Project.toml` file.
 
 * [Working with a Private Registry and/or Private Repositories](docs/ssh_keys.md)
 * [Registering a Package in a Subdirectory of a Repository](docs/subdir.md)
+* [Merging Registries](docs/merge.md)
