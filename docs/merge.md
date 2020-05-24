@@ -15,8 +15,7 @@ Copy only the packages `A` and `B`.
 
 Copy all packages except `A` and `B`.
 
-----
+    LocalRegistry.merge(..., merge_packages = true)
 
-This gives an error if you try to copy a package that already exists
-in the target repository. There is no built in support for commiting
-or pushing the target registry.
+Attempt to merge packages that appear in both registries. Without this
+option clashing packages give an error.
