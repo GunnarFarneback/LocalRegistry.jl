@@ -346,10 +346,17 @@ end
 
 function get_remote_repo(package_path, gitconfig)
     git = gitcmd(package_path, gitconfig)
-    remote_name = split(readchomp(`$git remote`), '\n')
-    length(remote_name) > 1 && error("Repository has multiple remotes.")
-    remote_name[1] == "" && error("Repository does not have a remote.")
-    return readchomp(`$git remote get-url $(remote_name[1])`)
+    remote_names = split(readchomp(`$git remote`), '\n')
+    repos = String[]
+    for remote_name in remote_names
+        r = readchomp(`$git remote get-url $(remote_name)`)
+        if !isequal(r,"")
+            push!(repos,r)
+        end
+    end
+    length(repos) === 0 && error("No repo URL found. Try calling `register` with the keyword `repo` to provide a URL.")
+    length(repos) > 1 && error("Multiple repo URLs found. Try calling `register` with the keyword `repo` to provide a URL.\n$(repos)")
+    return repos[1]
 end
 
 function commit_registry(pkg::Pkg.Types.Project, package_path, package_repo, tree_hash, git)
