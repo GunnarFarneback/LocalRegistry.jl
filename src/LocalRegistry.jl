@@ -349,9 +349,8 @@ function get_remote_repo(package_path, gitconfig)
     remote_names = split(readchomp(`$git remote`), '\n')
     repos = String[]
     for remote_name in remote_names
-        r = readchomp(`$git remote get-url $(remote_name)`)
-        if !isequal(r,"")
-            push!(repos,r)
+        if !isequal(remote_name,"")
+            push!(repos,readchomp(`$git remote get-url $(remote_name)`))
         end
     end
     length(repos) === 0 && error("No repo URL found. Try calling `register` with the keyword `repo` to provide a URL.")
