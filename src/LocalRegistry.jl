@@ -126,8 +126,8 @@ by `package`.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 """
-function register(package::Union{Module, AbstractString},
-                  registry::Union{Nothing, AbstractString} = nothing;
+function register(package,
+                  registry = nothing;
                   commit = true, push = false, repo = nothing,
                   gitconfig::Dict = Dict())
     # Find and read the `Project.toml` for the package. First look for
