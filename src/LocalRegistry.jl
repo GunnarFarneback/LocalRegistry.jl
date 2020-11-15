@@ -165,7 +165,7 @@ function register(package::Union{Module, AbstractString},
     # nothing and don't error in that case.
     if find_registered_version(pkg, registry_path) == tree_hash
         @info "This version has already been registered and is unchanged."
-        return
+        return false
     end
 
     # Use the `repo` argument or, if this is a new package
@@ -213,7 +213,7 @@ function register(package::Union{Module, AbstractString},
         error(explain_registration_error(status))
     end
 
-    return
+    return true
 end
 
 function explain_registration_error(status)
