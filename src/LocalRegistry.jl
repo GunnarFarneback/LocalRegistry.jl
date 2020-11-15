@@ -128,8 +128,17 @@ by `package`.
 """
 function register(package::Union{Module, AbstractString},
                   registry::Union{Nothing, AbstractString} = nothing;
-                  commit = true, push = false, repo = nothing,
-                  gitconfig::Dict = Dict())
+                  kwargs...)
+    do_register(package, registry; kwargs...)
+    return
+end
+
+# Differs from the above by looser type restrictions on `package` and
+# `registry`. Also returns false if there was nothing new to register
+# and true if something new was registered.
+function do_register(package, registry;
+                     commit = true, push = false, repo = nothing,
+                     gitconfig::Dict = Dict())
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
     package_path = find_package_path(package)
@@ -165,7 +174,7 @@ function register(package::Union{Module, AbstractString},
     # nothing and don't error in that case.
     if find_registered_version(pkg, registry_path) == tree_hash
         @info "This version has already been registered and is unchanged."
-        return
+        return false
     end
 
     # Use the `repo` argument or, if this is a new package
@@ -213,7 +222,7 @@ function register(package::Union{Module, AbstractString},
         error(explain_registration_error(status))
     end
 
-    return
+    return true
 end
 
 function explain_registration_error(status)
