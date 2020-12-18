@@ -129,8 +129,7 @@ by `package`.
 function register(package::Union{Module, AbstractString},
                   registry::Union{Nothing, AbstractString} = nothing;
                   kwargs...)
-    do_register(package, registry; kwargs...)
-    return
+    return do_register(package, registry; kwargs...)
 end
 
 # Differs from the above by looser type restrictions on `package` and
@@ -220,6 +219,7 @@ function do_register(package, registry;
     # Registration failed. Explain to the user what happened.
     if haserror(status)
         error(explain_registration_error(status))
+        return false
     end
 
     return true
