@@ -125,10 +125,18 @@ function sanity_check_registry(path)
             version_info = Pkg.Operations.load_versions(ctx, package_path;
                                                         include_yanked = false)
             versions = sort!(collect(keys(version_info)))
-            deps_data = Pkg.Operations.load_package_data(Pkg.Types.UUID,
-                                                         deps_file, versions)
-            compat_data = Pkg.Operations.load_package_data(Pkg.Types.VersionSpec,
-                                                           compat_file, versions)
+            if applicable(Pkg.Operations.load_package_data,
+                          Pkg.Types.UUID, deps_file, versions)
+                deps_data = Pkg.Operations.load_package_data(Pkg.Types.UUID,
+                                                             deps_file, versions)
+                compat_data = Pkg.Operations.load_package_data(Pkg.Types.VersionSpec,
+                                                               compat_file, versions)
+            else
+                deps_data = Pkg.Operations.load_package_data(ctx, Pkg.Types.UUID,
+                                                             deps_file, versions)
+                compat_data = Pkg.Operations.load_package_data(ctx, Pkg.Types.VersionSpec,
+                                                               compat_file, versions)
+            end
         end
     end
     
