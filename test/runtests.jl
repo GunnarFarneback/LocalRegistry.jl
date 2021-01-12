@@ -254,12 +254,11 @@ package_path = find_package_path(Multibreak)
 @test find_package_path(package_path) == package_path
 
 # Find package by name.
-if !Base.Sys.isapple()
+if Base.Sys.islinux()
     @test find_package_path("Multibreak") == package_path
 else
-    # Workaround a Travis macOS failure where presumably the same path
-    # is obtained but prefixed by `/private`.
-    @test occursin(package_path, find_package_path("Multibreak"))
+    # Workaround for CI path weirdnesses on Windows and Mac.
+    @test splitpath(package_path)[end-2:end] == splitpath(find_package_path("Multibreak"))[end-2:end]
 end
 
 # Not a package path.
