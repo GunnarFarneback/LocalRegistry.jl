@@ -44,7 +44,7 @@ pkg"add LocalRegistry"
 using LocalRegistry
 create_registry(name, repository_url, description = "My private registry")
 ```
-This prepares a registry with the given name in the the standard
+This prepares a registry with the given name in the standard
 location for registries. Review the result and `git push` it
 manually. When created in this way the registry is automatically
 activated and the next section can be skipped.
@@ -97,8 +97,6 @@ of the package's `Project.toml` file.
 
 ## Advanced Topics
 
-
 * [Working with a Private Registry and/or Private Repositories](docs/ssh_keys.md)
 * [Registering a Package in a Subdirectory of a Repository](docs/subdir.md)
-
 * [Migrating Packages from the General Registry](docs/migration_from_general.md)
