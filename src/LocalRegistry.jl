@@ -96,8 +96,12 @@ number and other information is obtained from the package's
 Register a new version of `package`.  The version number is obtained
 from the package's `Project.toml`.
 
+    register()
+
+Register a new version of the package in the currently active project.
+
 Notes:
- * By default this will, in both cases, only update the registry
+ * By default this will, in all cases, only update the registry
    locally. Review the result and `git push` it manually. This step
    can be made automatically with the keyword argument `push`
    described below.
@@ -126,7 +130,7 @@ by `package`.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 """
-function register(package::Union{Module, AbstractString},
+function register(package::Union{Nothing, Module, AbstractString} = nothing,
                   registry::Union{Nothing, AbstractString} = nothing;
                   kwargs...)
     do_register(package, registry; kwargs...)
@@ -257,6 +261,32 @@ function is_dirty(path, gitconfig)
     # TODO: There should be no need for the `-u` option but without it
     # a bogus diff is reported in the tests.
     return !isempty(read(`$git diff-index -u HEAD -- .`))
+end
+
+# If the package is omitted, the active project must correspond to a
+# package.
+function find_package_path(::Nothing)
+    path = ""
+    if VERSION < v"1.4"
+        env = Pkg.Types.EnvCache()
+        if !isnothing(env.pkg)
+            path = dirname(env.project_file)
+        end
+    else
+        # Pkg.project() was introduced in Julia 1.4 as an experimental
+        # feature. Effectively this does the same thing as the code
+        # above but is hopefully more future safe.
+        project = Pkg.project()
+        if project.ispackage
+            path = dirname(project.path)
+        end
+    end
+
+    if path == ""
+        error("The active project is not a package.")
+    end
+
+    return path
 end
 
 # If the package is provided as a module, directly find the package

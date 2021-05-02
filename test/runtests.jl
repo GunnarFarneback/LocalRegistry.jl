@@ -125,6 +125,7 @@ else
                                              gitconfig = TEST_GITCONFIG,
                                              push = false)
 end
+
 # Trying to change name (UUID remains).
 prepare_package(packages_dir, "Fluxx1.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Fluxx"),
@@ -307,6 +308,14 @@ end
 @test_throws ErrorException register("Multibreak", "TestRegistry2",
                                      gitconfig = TEST_GITCONFIG, push = false)
 
+# Remove Project.toml from a package and try to register.
+mv(joinpath(package_path, "Project.toml"),
+   joinpath(package_path, "Project.txt"))
+@test_throws ErrorException register("Multibreak", "TestRegistry2",
+                                     gitconfig = TEST_GITCONFIG, push = false)
+mv(joinpath(package_path, "Project.txt"),
+   joinpath(package_path, "Project.toml"))
+
 # Dirty the package repository and try to register the package.
 package_path = find_package_path("Multibreak")
 filename = joinpath(package_path, "README.md")
@@ -316,13 +325,17 @@ end
 @test_throws ErrorException register("Multibreak", "TestRegistry2",
                                      gitconfig = TEST_GITCONFIG, push = false)
 
-# Remove Project.toml from a package and try to register.
-mv(joinpath(package_path, "Project.toml"),
-   joinpath(package_path, "Project.txt"))
-@test_throws ErrorException register("Multibreak", "TestRegistry2",
-                                     gitconfig = TEST_GITCONFIG, push = false)
-mv(joinpath(package_path, "Project.txt"),
-   joinpath(package_path, "Project.toml"))
+# Current active environment is not a package.
+@test_throws ErrorException find_package_path(nothing)
+
+# Activate a package directory and find it with `find_package_path`.
+Pkg.activate("Multibreak")
+if Base.Sys.islinux()
+    @test find_package_path(nothing) == package_path
+else
+    # Workaround for CI path weirdnesses on Windows and Mac.
+    @test splitpath(package_path)[end-2:end] == splitpath(find_package_path(nothing))[end-2:end]
+end
 
 if VERSION < v"1.2"
     rm(depot_path, recursive = true)
