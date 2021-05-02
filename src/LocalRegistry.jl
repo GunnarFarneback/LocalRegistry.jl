@@ -340,7 +340,7 @@ function find_registry_path(registry::AbstractString)
         return abspath(expanduser(registry))
     end
 
-    all_registries = Pkg.Types.collect_registries()
+    all_registries = collect_registries()
     matching_registries = filter(r -> r.name == registry, all_registries)
     if isempty(matching_registries)
         error("Registry $(registry) not found.")
@@ -350,11 +350,10 @@ function find_registry_path(registry::AbstractString)
 end
 
 function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
-    all_registries = Pkg.Types.collect_registries()
+    all_registries = collect_registries()
 
     matching_registries = filter(all_registries) do reg_spec
-        reg_data = Pkg.Types.read_registry(joinpath(reg_spec.path,
-                                                    "Registry.toml"))
+        reg_data = Pkg.TOML.parsefile(joinpath(reg_spec.path, "Registry.toml"))
         haskey(reg_data["packages"], string(pkg.uuid))
     end
 
@@ -367,8 +366,29 @@ function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
     return first(matching_registries).path
 end
 
+# This replaces the use of `Pkg.Types.collect_registries` which was
+# removed in Julia 1.7.
+#
+# TODO: Once Julia versions before 1.7 are no longer supported,
+# consider switching over to use `Pkg.Registry.reachable_registries`
+# where this is called.
+function collect_registries()
+    registries = []
+    for depot in Pkg.depots()
+        isdir(depot) || continue
+        reg_dir = joinpath(depot, "registries")
+        isdir(reg_dir) || continue
+        for name in readdir(reg_dir)
+            file = joinpath(reg_dir, name, "Registry.toml")
+            isfile(file) || continue
+            push!(registries, (name = name, path = joinpath(reg_dir, name)))
+        end
+    end
+    return registries
+end
+
 function has_package(registry_path, pkg::Pkg.Types.Project)
-    registry = Pkg.Types.read_registry(joinpath(registry_path, "Registry.toml"))
+    registry = Pkg.TOML.parsefile(joinpath(registry_path, "Registry.toml"))
     return haskey(registry["packages"], string(pkg.uuid))
 end
 

@@ -227,6 +227,9 @@ register(joinpath(packages_dir, "FirstTest"), registry_push_dir,
 # including registries, of the running Julia process.
 
 # Prepare by adding the registry used in previous tests.
+# TODO: Needed in Julia 1.7.0-DEV.1046. Check if the `mkdir` can be
+# removed for the final Julia 1.7.
+mkdir(joinpath(depot_path, "registries"))
 Pkg.Registry.add(RegistrySpec(path = registry_dir))
 
 # Use Multibreak as Guinea pig. The sleep is a Travis workaround. See

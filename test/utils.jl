@@ -111,6 +111,14 @@ end
 # no error.
 function sanity_check_registry(path)
     registry = TOML.parsefile(joinpath(path, "Registry.toml"))
+    if VERSION >= v"1.7-"
+        # TODO: Check if the `parse_packages` keyword is available
+        # when the final Julia 1.7 has been released and if so set it
+        # explicitly to true.
+        registry = Pkg.Registry.RegistryInstance(path)  # , parse_packages = true)
+        return true
+    end
+
     for (uuid, package) in registry["packages"]
         package_path = joinpath(path, package["path"])
         deps_file = joinpath(package_path, "Deps.toml")
