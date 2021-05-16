@@ -61,19 +61,21 @@ create_registry(registry_dir, "git@example.com:Julia/TestRegistry.git",
 # Add the FirstTest1 package and check against the stored `registry1`.
 prepare_package(packages_dir, "FirstTest1.toml")
 using FirstTest
-register(FirstTest, registry_dir, gitconfig = TEST_GITCONFIG, push = false)
+register(FirstTest, registry = registry_dir,
+         gitconfig = TEST_GITCONFIG, push = false)
 @test check_result(registry_dir, "registry1")
 
 # Reregister the same version of FirstTest to verify that nothing
 # happens,
-@test_logs (:info, "This version has already been registered and is unchanged.") register(FirstTest, registry_dir, gitconfig = TEST_GITCONFIG, push = false)
+@test_logs (:info, "This version has already been registered and is unchanged.") register(FirstTest, registry = registry_dir, gitconfig = TEST_GITCONFIG, push = false)
 @test check_result(registry_dir, "registry1")
 
 # Add 29 versions of the Flux project files and check against `registry2`.
 for n = 1:29
     prepare_package(packages_dir, "Flux$(n).toml")
     using Flux
-    register(Flux, registry_dir, gitconfig = TEST_GITCONFIG, push = false)
+    register(Flux, registry = registry_dir,
+             gitconfig = TEST_GITCONFIG, push = false)
 end
 @test check_result(registry_dir, "registry2")
 
@@ -81,7 +83,8 @@ end
 for n = 1:15
     prepare_package(packages_dir, "Images$(n).toml")
     using Images
-    register(Images, registry_dir, gitconfig = TEST_GITCONFIG, push = false)
+    register(Images, registry = registry_dir,
+             gitconfig = TEST_GITCONFIG, push = false)
 end
 @test check_result(registry_dir, "registry3")
 
@@ -101,7 +104,7 @@ for project_file in project_files
     prepare_package(packages_dir, project_file)
     package = match(r"[a-zA-Z]+", project_file).match
     # Register by path instead of module in this test.
-    register(joinpath(packages_dir, package), registry_dir,
+    register(joinpath(packages_dir, package), registry = registry_dir,
              gitconfig = TEST_GITCONFIG, push = false)
 end
 @test check_result(registry_dir, "registry3")
@@ -109,19 +112,20 @@ end
 # Trying to register an already existing version with different content.
 prepare_package(packages_dir, "Flux30.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Flux"),
-                                     registry_dir, gitconfig = TEST_GITCONFIG,
+                                     registry = registry_dir,
+                                     gitconfig = TEST_GITCONFIG,
                                      push = false)
 
 # Parse error in compat section.
 prepare_package(packages_dir, "Broken1.toml")
 if VERSION < v"1.2"
     @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                         registry_dir,
+                                         registry = registry_dir,
                                          gitconfig = TEST_GITCONFIG,
                                          push = false)
 else
     @test_throws Pkg.Types.PkgError register(joinpath(packages_dir, "Broken"),
-                                             registry_dir,
+                                             registry = registry_dir,
                                              gitconfig = TEST_GITCONFIG,
                                              push = false)
 end
@@ -129,37 +133,42 @@ end
 # Trying to change name (UUID remains).
 prepare_package(packages_dir, "Fluxx1.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Fluxx"),
-                                     registry_dir, gitconfig = TEST_GITCONFIG,
+                                     registry = registry_dir,
+                                     gitconfig = TEST_GITCONFIG,
                                      push = false)
 
 # Trying to change UUID.
 prepare_package(packages_dir, "Flux31.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Flux"),
-                                     registry_dir, gitconfig = TEST_GITCONFIG,
+                                     registry = registry_dir,
+                                     gitconfig = TEST_GITCONFIG,
                                      push = false)
 
 # Depends on itself.
 prepare_package(packages_dir, "Broken2.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                     registry_dir, gitconfig = TEST_GITCONFIG,
+                                     registry = registry_dir,
+                                     gitconfig = TEST_GITCONFIG,
                                      push = false)
 
 # Incorrect name of dependency.
 prepare_package(packages_dir, "Broken3.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                     registry_dir, gitconfig = TEST_GITCONFIG,
+                                     registry = registry_dir,
+                                     gitconfig = TEST_GITCONFIG,
                                      push = false)
 
 # TODO: This should really be an error but RegistryTools 1.3.0 doesn't catch it.
 # Incorrect UUID of dependency.
 prepare_package(packages_dir, "Broken4.toml")
-register(joinpath(packages_dir, "Broken"), registry_dir,
+register(joinpath(packages_dir, "Broken"), registry = registry_dir,
          gitconfig = TEST_GITCONFIG, push = false)
 
 # Incorrect UUID of stdlib.
 prepare_package(packages_dir, "Broken5.toml")
 @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                     registry_dir, gitconfig = TEST_GITCONFIG,
+                                     registry = registry_dir,
+                                     gitconfig = TEST_GITCONFIG,
                                      push = false)
 
 # Change the git remote before registration and verify that the
@@ -171,15 +180,15 @@ package_file = joinpath(registry_dir, "F", "Flux", "Package.toml")
 old_repo = TOML.parsefile(package_file)["repo"]
 new_repo = "https://example.com/Julia/Flux.jl.git"
 run(`$git remote set-url origin $(new_repo)`)
-register(joinpath(packages_dir, "Flux"), registry_dir,
+register(joinpath(packages_dir, "Flux"), registry = registry_dir,
          gitconfig = TEST_GITCONFIG, push = false)
 @test TOML.parsefile(package_file)["repo"] == old_repo
 
 # Register with explicit repo argument and verify that the registered
 # repo is updated.
 prepare_package(packages_dir, "Flux33.toml")
-register(joinpath(packages_dir, "Flux"), registry_dir, repo = new_repo,
-         gitconfig = TEST_GITCONFIG, push = false)
+register(joinpath(packages_dir, "Flux"), registry = registry_dir,
+         repo = new_repo, gitconfig = TEST_GITCONFIG, push = false)
 @test TOML.parsefile(package_file)["repo"] == new_repo
 
 pop!(LOAD_PATH)
@@ -188,15 +197,15 @@ pop!(LOAD_PATH)
 # some dirt outside the subdirectory to verify that it is ignored.
 prepare_package(packages_dir, "SubdirTest1.toml", "subdir")
 write(joinpath(packages_dir, "SubdirTest", "README.md"), "dirty")
-register(joinpath(packages_dir, "SubdirTest", "subdir"), registry_dir,
-         gitconfig = TEST_GITCONFIG, push = false)
+register(joinpath(packages_dir, "SubdirTest", "subdir"),
+         registry = registry_dir, gitconfig = TEST_GITCONFIG, push = false)
 package_file = joinpath(registry_dir, "S", "SubdirTest", "Package.toml")
 @test TOML.parsefile(package_file)["subdir"] == "subdir"
 
 # Register a package with a JuliaProject.toml rather than a Project.toml.
 prepare_package(packages_dir, "JuliaProjectTest1.toml",
                 use_julia_project = true)
-register(joinpath(packages_dir, "JuliaProjectTest"), registry_dir,
+register(joinpath(packages_dir, "JuliaProjectTest"), registry = registry_dir,
          gitconfig = TEST_GITCONFIG, push = false)
 @test isfile(joinpath(registry_dir, "J", "JuliaProjectTest", "Package.toml"))
 
@@ -213,7 +222,7 @@ registry_push_dir = joinpath(testdir, "TestRegistryPush")
 create_registry(registry_push_dir, "file://$(upstream_dir)", push = true,
                 gitconfig = TEST_GITCONFIG)
 downstream_git = gitcmd(registry_push_dir, TEST_GITCONFIG)
-register(joinpath(packages_dir, "FirstTest"), registry_push_dir,
+register(joinpath(packages_dir, "FirstTest"), registry = registry_push_dir,
          push = true, gitconfig = TEST_GITCONFIG)
 @test readchomp(`$(downstream_git) log`) == readchomp(`$(upstream_git) log`)
 @test length(readlines(`$(upstream_git) log --format=oneline`)) == 2
@@ -233,10 +242,10 @@ mkdir(joinpath(depot_path, "registries"))
 Pkg.Registry.add(RegistrySpec(path = registry_dir))
 
 # Use Multibreak as Guinea pig. The sleep is a Travis workaround. See
-# a later comment.
+# a later comment. This also tests automatically choosing the only
+# installed registry for a new package.
 sleep(1)
-register("Multibreak", "TestRegistry",
-         push = false, gitconfig = TEST_GITCONFIG)
+register("Multibreak", push = false, gitconfig = TEST_GITCONFIG)
 
 # Directory already exists. Also tests code handling a trailing slash.
 create_registry("TestRegistry2", "", gitconfig = TEST_GITCONFIG, push = false)
@@ -297,7 +306,7 @@ pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
 sleep(1)
 
 # More than one registry contains the package.
-register("Multibreak", "TestRegistry2",
+register("Multibreak", registry = "TestRegistry2",
          repo = "file://$(packages_dir)/FirstTest",
          gitconfig = TEST_GITCONFIG, push = false)
 @test_throws ErrorException find_registry_path(nothing, pkg)
@@ -308,13 +317,13 @@ filename = joinpath(registry_path, "Registry.toml")
 open(filename, "a") do io
     write(io, "\n")
 end
-@test_throws ErrorException register("Multibreak", "TestRegistry2",
+@test_throws ErrorException register("Multibreak", registry = "TestRegistry2",
                                      gitconfig = TEST_GITCONFIG, push = false)
 
 # Remove Project.toml from a package and try to register.
 mv(joinpath(package_path, "Project.toml"),
    joinpath(package_path, "Project.txt"))
-@test_throws ErrorException register("Multibreak", "TestRegistry2",
+@test_throws ErrorException register("Multibreak", registry = "TestRegistry2",
                                      gitconfig = TEST_GITCONFIG, push = false)
 mv(joinpath(package_path, "Project.txt"),
    joinpath(package_path, "Project.toml"))
@@ -325,7 +334,7 @@ filename = joinpath(package_path, "README.md")
 open(filename, "a") do io
     write(io, "\n")
 end
-@test_throws ErrorException register("Multibreak", "TestRegistry2",
+@test_throws ErrorException register("Multibreak", registry = "TestRegistry2",
                                      gitconfig = TEST_GITCONFIG, push = false)
 
 # Current active environment is not a package.

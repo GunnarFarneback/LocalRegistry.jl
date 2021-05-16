@@ -1,15 +1,12 @@
 # LocalRegistry
 
 Create and maintain local registries for Julia packages. This package
-is intended to provide a simple but manual workflow for maintaining
-small local registries (private or public) without making any
-assumptions about how the registry or the packages are hosted.
+is intended to provide a simple workflow for maintaining local
+registries (private or public) without making any assumptions about
+how the registry or the packages are hosted.
 
 For registration in the General registry, see
-[Registrator](https://github.com/JuliaComputing/Registrator.jl). For a
-more automated but GitHub-centric workflow with either the General
-registry or a local registry, see
-[PkgDev](https://github.com/JuliaLang/PkgDev.jl).
+[Registrator](https://github.com/JuliaComputing/Registrator.jl).
 
 For serving local packages through a [Package
 Server](https://github.com/JuliaLang/Pkg.jl/issues/1377) see the
@@ -65,7 +62,7 @@ This only needs to be done once per Julia installation.
 
 ```
 using LocalRegistry
-register(package, registry)
+register(package, registry = registry)
 ```
 
 Register the new `package` in the registry `registry`. The version
@@ -83,6 +80,8 @@ Notes:
 * The package must have a `Project.toml` file.
 * There is no checking that the dependencies are available in any
   registry.
+* If you have exactly one installed registry beside the `General`
+  registry, it is not necessary to specify `registry`.
 
 ## Register a New Version of a Package
 
@@ -94,6 +93,20 @@ register(package)
 When adding a new version of a package, the registry can be
 omitted. The new version number is obtained from the `version` field
 of the package's `Project.toml` file.
+
+## Simplified Registration of Active Package
+
+If you start Julia with the `--project` flag or use `Pkg.activate` to
+activate a developed package, this package can be registered simply by
+
+```
+using LocalRegistry
+register()
+```
+
+This is also sufficient for registering a new package, provided that
+you have exactly one installed registry beside the `General` registry.
+
 
 ## Advanced Topics
 

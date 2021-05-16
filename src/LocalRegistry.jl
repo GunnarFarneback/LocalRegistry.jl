@@ -85,7 +85,7 @@ function create_registry(name_or_path, repo; description = nothing,
 end
 
 """
-    register(package, registry)
+    register(package, registry = registry)
 
 Register the new `package` in the registry `registry`. The version
 number and other information is obtained from the package's
@@ -122,16 +122,17 @@ by `package`.
 
 *Keyword arguments*
 
-    register(package, registry; commit = true, push = false, repo = nothing,
-             gitconfig = Dict())
+    register(package; registry = nothing, commit = true, push = false,
+             repo = nothing, gitconfig = Dict())
 
+* `registry`: Name or path of registry.
 * `commit`: If `false`, only make the changes to the registry but do not commit.
 * `push`: If `true`, push the changes to the registry repository automatically. Ignored if `commit` is false.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 """
-function register(package::Union{Nothing, Module, AbstractString} = nothing,
-                  registry::Union{Nothing, AbstractString} = nothing;
+function register(package::Union{Nothing, Module, AbstractString} = nothing;
+                  registry::Union{Nothing, AbstractString} = nothing,
                   kwargs...)
     do_register(package, registry; kwargs...)
     return
@@ -351,6 +352,8 @@ end
 
 function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
     all_registries = collect_registries()
+    all_registries_but_general = filter(r -> r.name != "General",
+                                        all_registries)
 
     matching_registries = filter(all_registries) do reg_spec
         reg_data = Pkg.TOML.parsefile(joinpath(reg_spec.path, "Registry.toml"))
@@ -358,9 +361,13 @@ function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
     end
 
     if isempty(matching_registries)
-        error("Package $(pkg.name) not found in any registry. Please specify in which registry you want to register it.")
+        if length(all_registries_but_general) == 1
+            return first(all_registries_but_general).path
+        else
+            error("Package $(pkg.name) not found in any registry. Please specify in which registry you want to register it.")
+        end
     elseif length(matching_registries) > 1
-        error("Package $(pkg.name) is registered in more than one registry, please specify in which you want to register the package.")
+        error("Package $(pkg.name) is registered in more than one registry, please specify in which you want to register the new version.")
     end
 
     return first(matching_registries).path
