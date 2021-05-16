@@ -1,7 +1,7 @@
 name = "LocalRegistry"
 uuid = "89398ba2-070a-4b16-a995-9893c55d93cf"
 authors = ["Gunnar Farnebäck <gunnar@lysator.liu.se>"]
-version = "0.3.3"
+version = "0.4.0"
 
 [deps]
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
