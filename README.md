@@ -72,8 +72,6 @@ by name as strings. See the documentation string for more options.
 
 Notes:
 * You need to have a clean working copy of your registry.
-* The changes are committed to the registry but you need to push them
-  yourself.
 * The package must be stored as a git working copy, e.g. having been
   cloned with `Pkg.develop`.
 * The package must be available in the current `Pkg` environment.

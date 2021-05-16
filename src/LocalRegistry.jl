@@ -101,10 +101,9 @@ from the package's `Project.toml`.
 Register a new version of the package in the currently active project.
 
 Notes:
- * By default this will, in all cases, only update the registry
-   locally. Review the result and `git push` it manually. This step
-   can be made automatically with the keyword argument `push`
-   described below.
+ * By default this will, in all cases, `git push` the updated registry
+   to its remote repository. If you prefer to do the push manually,
+   use the keyword argument `push = false`.
  * The package must live in a git working copy, e.g. having been
    cloned by `Pkg.develop`.
 
@@ -122,7 +121,7 @@ by `package`.
 
 *Keyword arguments*
 
-    register(package; registry = nothing, commit = true, push = false,
+    register(package; registry = nothing, commit = true, push = true,
              repo = nothing, gitconfig = Dict())
 
 * `registry`: Name or path of registry.
@@ -142,7 +141,7 @@ end
 # `registry`. Also returns false if there was nothing new to register
 # and true if something new was registered.
 function do_register(package, registry;
-                     commit = true, push = false, repo = nothing,
+                     commit = true, push = true, repo = nothing,
                      gitconfig::Dict = Dict())
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
