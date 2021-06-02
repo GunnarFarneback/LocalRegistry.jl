@@ -18,6 +18,7 @@ using RegistryTools: RegistryTools, Compress,
 using RegistryInstances: RegistryInstance, reachable_registries
 using UUIDs: uuid4
 import TOML
+import Git
 
 export create_registry, register
 
@@ -614,18 +615,12 @@ function gitlab(branch, pkg, new_package, repo, commit)
 end
 
 function gitcmd(path::AbstractString, gitconfig::Dict)
-    if Sys.iswindows()
-        # Workaround for https://github.com/GunnarFarneback/LocalRegistry.jl/issues/76.
-        # Cf. https://github.com/ziglang/zig/issues/16526#issuecomment-1648706259
-        cmd = ["cmd", "/c", "git", "-C", path]
-    else
-        cmd = ["git", "-C", path]
+    args = ["-C", path]
+    for (k, v) in gitconfig
+        push!(args, "-c")
+        push!(args, "$k=$v")
     end
-    for (n,v) in gitconfig
-        push!(cmd, "-c")
-        push!(cmd, "$n=$v")
-    end
-    Cmd(cmd)
+    return Git.git(args)
 end
 
 end
