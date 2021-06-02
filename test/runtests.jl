@@ -7,6 +7,7 @@ using Pkg
 const TEST_GITCONFIG = Dict(
     "user.name" => "LocalRegistryTests",
     "user.email" => "localregistrytests@example.com",
+    "core.autocrlf" => "input"
 )
 
 include("utils.jl")

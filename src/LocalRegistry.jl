@@ -12,11 +12,12 @@ Registration of new and updated packages is done by the function `register`.
 """
 module LocalRegistry
 
-using RegistryTools: RegistryTools, gitcmd, Compress,
+using RegistryTools: RegistryTools, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
                      find_registered_version
 using UUIDs: uuid4
 using Pkg: Pkg, TOML
+using Git
 
 export create_registry, register
 
@@ -432,6 +433,15 @@ function commit_registry(pkg::Pkg.Types.Project, package_path, package_repo, tre
     """
     run(`$git add --all`)
     run(`$git commit -qm $message`)
+end
+
+function gitcmd(path::AbstractString, gitconfig::Dict)
+    args = ["-C", path]
+    for (k, v) in gitconfig
+        push!(args, "-c")
+        push!(args, "$k=$v")
+    end
+    return Git.git(args)
 end
 
 end

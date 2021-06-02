@@ -16,17 +16,8 @@ companion package
 
 ## Compatibility
 
-This package requires Julia 1.1 or later.
-
-## Prerequisites
-
-You need to have command line `git` installed and available in the
-system `PATH`. If
-```
-run(`git --version`)
-```
-in the Julia REPL prints a version number rather than giving an error,
-you are good to go.
+The latest version of this package requires Julia 1.6 or later. Old
+versions require Julia 1.1 or later.
 
 ## Installation
 
