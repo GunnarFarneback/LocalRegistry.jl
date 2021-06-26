@@ -116,6 +116,10 @@ you have exactly one installed registry beside the `General` registry.
 If you run `register()` but the active project is not a package, it
 will look for a package in the current directory.
 
+## Tutorials
+
+* [Creating a registry at Github](docs/tutorials/create_registry_github.md)
+
 ## Advanced Topics
 
 * [Working with a Private Registry and/or Private Repositories](docs/ssh_keys.md)
