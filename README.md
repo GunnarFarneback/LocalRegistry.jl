@@ -46,6 +46,10 @@ location for registries. Review the result and `git push` it
 manually. When created in this way the registry is automatically
 activated and the next section can be skipped.
 
+The repository at `repository_url` must be able to be pushed to,
+for example by being a bare repository. `repository_url` itself
+can be an URL, or a path to a local git repository.
+
 The registry can also be created at a specified path. See the
 documentation string for details.
 
