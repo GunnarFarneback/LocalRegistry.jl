@@ -198,6 +198,14 @@ function do_register(package, registry;
         package_repo = repo
     end
 
+    # Check that `package_repo` is not a relative path. Relative paths do not work
+    # currently with Pkg (Pkg issue #677).
+    # This approach here does not always work, because the path may be relative to another
+    # location. Further, nearly all strings are valid paths in Unix, including URLs.
+    if ispath(package_repo) && !isabspath(package_repo)
+        error("Relative package paths are not supported")
+    end
+
     @info "Registering package" package_path registry_path package_repo uuid=pkg.uuid version=pkg.version tree_hash subdir
     clean_registry = true
 
