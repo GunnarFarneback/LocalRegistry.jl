@@ -227,7 +227,18 @@ register(joinpath(packages_dir, "FirstTest"), registry = registry_push_dir,
 @test readchomp(`$(downstream_git) log`) == readchomp(`$(upstream_git) log`)
 @test length(readlines(`$(upstream_git) log --format=oneline`)) == 2
 
-
+# Test it fails with an upstream repo that is not bare
+bad_upstream_dir = joinpath(testdir, "bad_upstream")
+mkpath(bad_upstream_dir)
+bad_upstream_git = gitcmd(bad_upstream_dir, TEST_GITCONFIG)
+run(`$(bad_upstream_git) init`)
+bad_registry_push_dir = joinpath(testdir, "TestRegistryNotBare")
+@test_throws ErrorException create_registry(
+    bad_registry_push_dir,
+    "file://$(bad_upstream_dir)",
+    push = true,
+    gitconfig = TEST_GITCONFIG
+)
 
 # Additional tests of `find_package_path` and `find_registry_path`.
 # Many of these have the purpose to cover error cases, making them

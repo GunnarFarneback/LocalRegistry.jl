@@ -67,6 +67,14 @@ function create_registry(name_or_path, repo; description = nothing,
         uuid = string(uuid4())
     end
 
+    # Check the upstream repo is bare
+    let
+        filepath = startswith(repo, "file://") ? repo[8:end] : repo
+        if ispath(filepath) && !is_bare_repo(filepath, gitconfig)
+            error("Repository at URL must be bare")
+        end
+    end
+
     registry_data = RegistryTools.RegistryData(name, uuid, repo = repo,
                                                description = description)
     RegistryTools.write_registry(joinpath(path, "Registry.toml"), registry_data)
@@ -199,6 +207,7 @@ function do_register(package, registry;
     clean_registry = true
 
     git = gitcmd(registry_path, gitconfig)
+
     HEAD = readchomp(`$git rev-parse --verify HEAD`)
     status = ReturnStatus()
     try
@@ -419,6 +428,11 @@ function get_remote_repo(package_path, gitconfig)
     length(repos) === 0 && error("No repo URL found. Try calling `register` with the keyword `repo` to provide a URL.")
     length(repos) > 1 && error("Multiple repo URLs found. Try calling `register` with the keyword `repo` to provide a URL.\n$(repos)")
     return repos[1]
+end
+
+function is_bare_repo(registry_path, gitconfig)
+    git = gitcmd(registry_path, gitconfig)
+    parse(Bool, read(`$git  rev-parse --is-bare-repository`, String))
 end
 
 function commit_registry(pkg::Pkg.Types.Project, package_path, package_repo, tree_hash, git)
