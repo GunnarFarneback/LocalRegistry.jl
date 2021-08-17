@@ -119,6 +119,9 @@ Notes:
 `package`. If omitted or `nothing`, it will be automatically located
 by `package`.
 
+Currently, Pkg does not support relative paths for packages in repositories.
+If the package repo is explicitly set to a path, it must be an absolute path.
+
 *Keyword arguments*
 
     register(package; registry = nothing, commit = true, push = true,

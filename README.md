@@ -74,6 +74,7 @@ Notes:
 * You need to have a clean working copy of your registry.
 * The package must be stored as a git working copy, e.g. having been
   cloned with `Pkg.develop`.
+* Currently, relative paths of packages [are not supported](https://github.com/JuliaLang/Pkg.jl/issues/677) by Pkg. Make sure to have `dev`'d an absolute path.
 * The package must be available in the current `Pkg` environment.
 * The package must have a `Project.toml` file.
 * There is no checking that the dependencies are available in any
