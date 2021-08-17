@@ -27,12 +27,13 @@ export create_registry, register
     create_registry(path, repo)
 
 Create a registry with the given `name` or at the local directory
-`path`, and with repository URL `repo`. The first argument is
+`path`, and with repository URL or path `repo`. The first argument is
 interpreted as a path if it has more than one path component and
 otherwise as a name. If a path is given, the last path component is
 used as the name of the registry. If a name is given, it is created in
 the standard registry location. In both cases the registry path must
-not previously exist.
+not previously exist. The repository must be able to be pushed to,
+for example by being a bare repository.
 
 *Keyword arguments*
 
