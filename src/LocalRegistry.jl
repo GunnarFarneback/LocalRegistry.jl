@@ -207,7 +207,6 @@ function do_register(package, registry;
     clean_registry = true
 
     git = gitcmd(registry_path, gitconfig)
-
     HEAD = readchomp(`$git rev-parse --verify HEAD`)
     status = ReturnStatus()
     try
@@ -432,7 +431,7 @@ end
 
 function is_bare_repo(registry_path, gitconfig)
     git = gitcmd(registry_path, gitconfig)
-    parse(Bool, read(`$git  rev-parse --is-bare-repository`, String))
+    parse(Bool, read(`$git rev-parse --is-bare-repository`, String))
 end
 
 function commit_registry(pkg::Pkg.Types.Project, package_path, package_repo, tree_hash, git)
