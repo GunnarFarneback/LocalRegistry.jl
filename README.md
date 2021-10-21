@@ -79,11 +79,13 @@ Notes:
 * The package must be stored as a git working copy, e.g. having been
   cloned with `Pkg.develop`.
 * The package must be available in the current `Pkg` environment.
-* The package must have a `Project.toml` file.
+* The package must have a `Project.toml` or `JuliaProject.toml` file.
 * There is no checking that the dependencies are available in any
   registry.
 * If you have exactly one installed registry beside the `General`
   registry, it is not necessary to specify `registry`.
+* By default the registry changes are `git push`ed to the upstream
+  registry repository.
 
 ## Register a New Version of a Package
 
@@ -96,7 +98,7 @@ When adding a new version of a package, the registry can be
 omitted. The new version number is obtained from the `version` field
 of the package's `Project.toml` file.
 
-## Simplified Registration of Active Package
+## Simplified Registration of Active Package or Current Directory
 
 If you start Julia with the `--project` flag or use `Pkg.activate` to
 activate a developed package, this package can be registered simply by
@@ -109,6 +111,8 @@ register()
 This is also sufficient for registering a new package, provided that
 you have exactly one installed registry beside the `General` registry.
 
+If you run `register()` but the active project is not a package, it
+will look for a package in the current directory.
 
 ## Advanced Topics
 
