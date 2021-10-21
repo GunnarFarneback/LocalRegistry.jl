@@ -86,20 +86,20 @@ function create_registry(name_or_path, repo; description = nothing,
 end
 
 """
-    register(package, registry = registry)
-
-Register the new `package` in the registry `registry`. The version
-number and other information is obtained from the package's
-`Project.toml`.
-
+    register(package; registry = registry)
     register(package)
-
-Register a new version of `package`.  The version number is obtained
-from the package's `Project.toml`.
-
     register()
 
-Register a new version of the package in the currently active project.
+Register `package`. If `package` is omitted, register the package in
+the currently active project or in the current directory in case the
+active project is not a package.
+
+If `registry` is not specified:
+* For registration of a new version, automatically locate the registry
+  where `package` is available.
+* For registration of a new package, fail unless exactly one registry
+  other than General is installed, in which case that registry is
+  used.
 
 Notes:
  * By default this will, in all cases, `git push` the updated registry
@@ -116,19 +116,30 @@ Notes:
   specified by starting with `"./"`.
 * By module. It needs to first be loaded by `using` or `import`.
 
-`registry` can be specified by name or by path in the same way as
-`package`. If omitted or `nothing`, it will be automatically located
-by `package`.
+`registry` can be specified in the following ways:
+* By registry name. This must be an exact match to the name of one of
+  the installed registries.
+* By path. This must be an existing local path.
+* By URL to its remote location. Everything which doesn't match one of
+  the previous options is assumed to be a URL.
+
+If `registry` is specified by URL, or the found registry is not a git
+clone (i.e. obtained from a package server), a temporary git clone
+will be used to perform the registration. In this case `push` must be
+`true`.
 
 *Keyword arguments*
 
     register(package; registry = nothing, commit = true, push = true,
-             repo = nothing, gitconfig = Dict())
+             branch = nothing, repo = nothing, ignore_reregistration = false,
+             gitconfig = Dict())
 
-* `registry`: Name or path of registry.
-* `commit`: If `false`, only make the changes to the registry but do not commit.
+* `registry`: Name, path, or URL of registry.
+* `commit`: If `false`, only make the changes to the registry but do not commit. Additionally the registry is allowed to be dirty in the `false` case.
 * `push`: If `true`, push the changes to the registry repository automatically. Ignored if `commit` is false.
+* `branch`: Branch name to use for the registration.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
+* `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 """
 function register(package::Union{Nothing, Module, AbstractString} = nothing;
@@ -142,7 +153,8 @@ end
 # `registry`. Also returns false if there was nothing new to register
 # and true if something new was registered.
 function do_register(package, registry;
-                     commit = true, push = true, repo = nothing,
+                     commit = true, push = true, branch = nothing,
+                     repo = nothing, ignore_reregistration = false,
                      gitconfig::Dict = Dict())
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
@@ -165,8 +177,16 @@ function do_register(package, registry;
     end
 
     registry_path = find_registry_path(registry, pkg)
+    registry_path, is_temporary = check_git_registry(registry_path, gitconfig)
+    if is_temporary && (!commit || !push)
+        error("Need to use a temporary git clone of the registry, but commit or push is set to false.")
+    end
     if is_dirty(registry_path, gitconfig)
-        error("Registry directory is dirty. Stash or commit files.")
+        if commit
+            error("Registry directory is dirty. Stash or commit files.")
+        else
+            @info("Note: registry directory is dirty.")
+        end
     end
 
     # Compute the tree hash for the package and the subdirectory
@@ -175,10 +195,15 @@ function do_register(package, registry;
     # string.
     tree_hash, subdir = get_tree_hash(package_path, gitconfig)
 
-    # Check if this exact package has already been registered. Do
-    # nothing and don't error in that case.
-    if find_registered_version(pkg, registry_path) == tree_hash
+    # Check if this version has already been registered. Note, if it
+    # was already registered and the contents has changed and
+    # `ignore_reregistration` is false, this will be caught later.
+    registered_version = find_registered_version(pkg, registry_path)
+    if registered_version == tree_hash
         @info "This version has already been registered and is unchanged."
+        return false
+    elseif !isempty(registered_version) && ignore_reregistration
+        @info "This version has already been registered. Registration request is ignored. Update the version number to register a new version."
         return false
     end
 
@@ -201,6 +226,8 @@ function do_register(package, registry;
 
     git = gitcmd(registry_path, gitconfig)
     HEAD = readchomp(`$git rev-parse --verify HEAD`)
+    saved_branch = readchomp(`$git rev-parse --abbrev-ref HEAD`)
+    remote = readchomp(`$git remote`)
     status = ReturnStatus()
     try
         check_and_update_registry_files(pkg, package_repo, tree_hash,
@@ -208,10 +235,18 @@ function do_register(package, registry;
                                         subdir = subdir)
         if !haserror(status)
             if commit
+                if !isnothing(branch)
+                    run(`$git checkout -b $branch`)
+                end
                 commit_registry(pkg, package_path, package_repo, tree_hash, git)
                 if push
-                    run(`$git push`)
+                    if isnothing(branch)
+                        run(`$git push`)
+                    else
+                        run(`$git push --set-upstream $remote $branch`)
+                    end
                 end
+                run(`$git checkout $(saved_branch)`)
             end
             clean_registry = false
         end
@@ -219,6 +254,7 @@ function do_register(package, registry;
         if clean_registry
             run(`$git reset --hard $(HEAD)`)
             run(`$git clean -f -d`)
+            run(`$git checkout $(saved_branch)`)
         end
     end
 
@@ -264,10 +300,11 @@ function is_dirty(path, gitconfig)
     return !isempty(read(`$git diff-index -u HEAD -- .`))
 end
 
-# If the package is omitted, the active project must correspond to a
-# package.
+# If the package is omitted,
+# * use the active project if it corresponds to a package,
+# * otherwise use the current directory.
 function find_package_path(::Nothing)
-    path = ""
+    path = pwd()
     if VERSION < v"1.4"
         env = Pkg.Types.EnvCache()
         if !isnothing(env.pkg)
@@ -281,10 +318,6 @@ function find_package_path(::Nothing)
         if project.ispackage
             path = dirname(project.path)
         end
-    end
-
-    if path == ""
-        error("The active project is not a package.")
     end
 
     return path
@@ -337,17 +370,21 @@ function find_registry_path(registry::AbstractString, ::Pkg.Types.Project)
 end
 
 function find_registry_path(registry::AbstractString)
-    if length(splitpath(registry)) > 1
-        return abspath(expanduser(registry))
-    end
-
+    # 1. Does `registry` match the name of one of the installed registries?
     all_registries = collect_registries()
     matching_registries = filter(r -> r.name == registry, all_registries)
-    if isempty(matching_registries)
-        error("Registry $(registry) not found.")
+    if !isempty(matching_registries)
+        return first(matching_registries).path
     end
 
-    return first(matching_registries).path
+    # 2. Is `registry` an existing path?
+    path = abspath(expanduser(registry))
+    if checked_ispath(path)
+        return path
+    end
+
+    # 3. If not, assume it is a URL.
+    return registry
 end
 
 function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
@@ -373,7 +410,81 @@ function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
     return first(matching_registries).path
 end
 
-# This replaces the use of `Pkg.Types.collect_registries` which was
+# Starting with Julia 1.4, a registry can either be obtained as a git
+# clone of a remote git repository or be downloaded from a Julia
+# package server. Starting with Julia 1.7, in the latter case the
+# registry can also be stored as a tar archive that hasn't been
+# unpacked.
+#
+# Either way, LocalRegistry must have a git clone to work with, so if
+# the registry is not in that form, make a temporary git clone.
+function check_git_registry(registry_path_or_url, gitconfig)
+    if !checked_ispath(registry_path_or_url)
+        # URL given. Use this to make a git clone.
+        url = registry_path_or_url
+    elseif isdir(joinpath(registry_path_or_url, ".git"))
+        # Path is already a git clone. Nothing left to do.
+        return registry_path_or_url, false
+    else
+        # Registry is given as a path but is not a git clone. Find the
+        # URL of the registry from Registry.toml.
+        if VERSION >= v"1.7-"
+            # This handles both packed and unpacked registries.
+            try
+                url = Pkg.Registry.RegistryInstance(registry_path_or_url).repo
+            catch
+                error("Bad registry path: $(registry_path_or_url)")
+            end
+        else
+            if looks_like_tar_registry(registry_path_or_url)
+                error("Non-unpacked registries require Julia 1.7 or later.")
+            elseif !isdir(registry_path_or_url)
+                error("Bad registry path: $(registry_path_or_url)")
+            end
+            url = Pkg.TOML.parsefile(joinpath(registry_path_or_url, "Registry.toml"))["repo"]
+        end
+    end
+
+    # Make a temporary clone of the registry at `url`. For Julia 1.3
+    # and later this will be automatically removed when Julia exits.
+    # For older Julia it will linger around. Upgrade your Julia if you
+    # don't like that.
+    path = mktempdir()
+    git = gitcmd(path, gitconfig)
+    try
+        # Note, the output directory `.` effectively means `path`.
+        run(`$git clone -q $url .`)
+    catch
+        error("Failed to make a temporary git clone of $url")
+    end
+    return path, true
+end
+
+# On sufficiently old Julia versions (including 1.1 but not 1.5) and
+# Windows, `ispath` errors instead of returning false for (at least
+# some) invalid paths, like e.g. "file://path".
+function checked_ispath(path)
+    if Sys.iswindows()
+        try
+            return ispath(path)
+        catch
+            return false
+        end
+    end
+    return ispath(path)
+end
+
+function looks_like_tar_registry(path)
+    endswith(path, ".toml") || return false
+    isfile(path) || return false
+    try
+        return haskey(Pkg.TOML.parsefile(path), "git-tree-sha1")
+    catch
+        return false
+    end
+end
+
+# This replaces the use of `Pkg.Types.collect_registries`, which was
 # removed in Julia 1.7.
 #
 # TODO: Once Julia versions before 1.7 are no longer supported,
@@ -387,8 +498,17 @@ function collect_registries()
         isdir(reg_dir) || continue
         for name in readdir(reg_dir)
             file = joinpath(reg_dir, name, "Registry.toml")
-            isfile(file) || continue
-            push!(registries, (name = name, path = joinpath(reg_dir, name)))
+            if isfile(file)
+                push!(registries, (name = name, path = joinpath(reg_dir, name)))
+            else
+                # Packed registry in Julia 1.7+.
+                file = joinpath(reg_dir, "$(name).toml")
+                if isfile(file)
+                    push!(registries,
+                          (name = name, path = joinpath(reg_dir,
+                                                        "$(name).toml")))
+                end
+            end
         end
     end
     return registries

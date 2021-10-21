@@ -150,3 +150,27 @@ function sanity_check_registry(path)
     
     return true
 end
+
+function with_testdir(f::Function)
+    if VERSION >= v"1.2"
+        testdir = mktempdir(prefix = "LocalRegistryTests")
+    else
+        testdir = mktempdir()
+    end
+    f(testdir)
+    rm(testdir, recursive = true)
+end
+
+function with_empty_registry(f::Function)
+    with_testdir() do testdir
+        registry_dir = joinpath(testdir, "TestRegistry")
+        packages_dir = joinpath(testdir, "packages")
+
+        # Create a new registry.
+        create_registry(registry_dir, "git@example.com:Julia/TestRegistry.git",
+                        description = "For testing purposes only.",
+                        uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369",
+                        gitconfig = TEST_GITCONFIG, push = false)
+        f(registry_dir, packages_dir)
+    end
+end
