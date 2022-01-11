@@ -19,7 +19,19 @@ using LocalRegistry
 register(package, registry, repo="git@github.com:User/Package.jl.git")
 ```
 
-## 2. Set Up Persistent git ssh Authentication that Julia Recognizes
+## 2. Using an External git Binary with Julia's Package Manager
+
+By default Julia's package manager uses libgit2 and libssh2 for git
+operations. The remaining items discuss how to set up ssh keys to work
+with these libraries. However, for Julia 1.7 and later, a potentially
+much simpler and more robust solution is to set the environment
+variable
+```
+JULIA_PKG_USE_CLI_GIT=true
+```
+to make Pkg use an external git binary.
+
+## 3. Set Up Persistent git ssh Authentication that Julia Recognizes
 
 By default libssh2 (which is used by the Julia Pkg manager via libgit2)
 looks for git ssh keys in `~/.ssh/id_rsa` and `~/.ssh/id_rsa.pub` so if you
@@ -39,7 +51,7 @@ export SSH_PUB_KEY_PATH=~/.ssh/key.pub
 export SSH_KEY_PATH=~/.ssh/key
 ```
 
-## 3. Generating a Compatible Key
+## 4. Generating a Compatible Key
 
 libssh2 is much less flexible than normal ssh in many ways, including
 keys. This is a way to generate a working key:
@@ -56,7 +68,7 @@ first line of the private key:
 * OpenSSL PEM format begins with `-----BEGIN RSA PRIVATE KEY-----`
 * OpenSSH format begins with `-----BEGIN OPENSSH PRIVATE KEY-----`
 
-## 4. Extracting the Public Key from the Private Key
+## 5. Extracting the Public Key from the Private Key
 
 If you only have the private key available, the corresponding public
 key can be generated from the private key with
