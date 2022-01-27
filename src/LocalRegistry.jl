@@ -132,7 +132,7 @@ will be used to perform the registration. In this case `push` must be
 
     register(package; registry = nothing, commit = true, push = true,
              branch = nothing, repo = nothing, ignore_reregistration = false,
-             gitconfig = Dict())
+             gitconfig = Dict(), create_gitlab_mr = false)
 
 * `registry`: Name, path, or URL of registry.
 * `commit`: If `false`, only make the changes to the registry but do not commit. Additionally the registry is allowed to be dirty in the `false` case.
@@ -141,6 +141,7 @@ will be used to perform the registration. In this case `push` must be
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message.
 * `gitconfig`: Optional configuration parameters for the `git` command.
+* `create_gitlab_mr`: If `true` sends git push options to create a GitLab merge request. Requires `commit` and `push` to be true.
 """
 function register(package::Union{Nothing, Module, AbstractString} = nothing;
                   registry::Union{Nothing, AbstractString} = nothing,
@@ -155,7 +156,7 @@ end
 function do_register(package, registry;
                      commit = true, push = true, branch = nothing,
                      repo = nothing, ignore_reregistration = false,
-                     gitconfig::Dict = Dict())
+                     gitconfig::Dict = Dict(), create_gitlab_mr = false)
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
     package_path = find_package_path(package)
@@ -192,8 +193,8 @@ function do_register(package, registry;
     # Compute the tree hash for the package and the subdirectory
     # location within the git repository. For normal packages living
     # at the top level of the repository, `subdir` will be the empty
-    # string.
-    tree_hash, subdir = get_tree_hash(package_path, gitconfig)
+    # string. Also obtain the commit hash for later use.
+    tree_hash, subdir, commit_hash = get_tree_hash(package_path, gitconfig)
 
     # Check if this version has already been registered. Note, if it
     # was already registered and the contents has changed and
@@ -207,12 +208,15 @@ function do_register(package, registry;
         return false
     end
 
+    # Is this a new package?
+    new_package = !has_package(registry_path, pkg)
+
     # Use the `repo` argument or, if this is a new package
     # registration, check for the git remote. If `repo` is `nothing`
     # and this is an existing package, the repository information will
     # not be updated.
     if isnothing(repo)
-        if !has_package(registry_path, pkg)
+        if new_package
             package_repo = get_remote_repo(package_path, gitconfig)
         else
             package_repo = ""
@@ -223,6 +227,15 @@ function do_register(package, registry;
 
     @info "Registering package" package_path registry_path package_repo uuid=pkg.uuid version=pkg.version tree_hash subdir
     clean_registry = true
+
+    push_options = String[]
+    if create_gitlab_mr
+        if !commit || !push
+            error("Neither `commit` nor `push` can be false when `create_gitlab_mr` is set to true.")
+        end
+        branch, push_options = gitlab(branch, pkg, new_package, package_repo,
+                                      commit_hash)
+    end
 
     git = gitcmd(registry_path, gitconfig)
     HEAD = readchomp(`$git rev-parse --verify HEAD`)
@@ -238,12 +251,13 @@ function do_register(package, registry;
                 if !isnothing(branch)
                     run(`$git checkout -b $branch`)
                 end
-                commit_registry(pkg, package_path, package_repo, tree_hash, git)
+                commit_registry(pkg, package_path, new_package,
+                                package_repo, tree_hash, git)
                 if push
                     if isnothing(branch)
                         run(`$git push`)
                     else
-                        run(`$git push --set-upstream $remote $branch`)
+                        run(`$git push $(push_options) --set-upstream $remote $branch`)
                     end
                 end
                 run(`$git checkout $(saved_branch)`)
@@ -255,6 +269,9 @@ function do_register(package, registry;
             run(`$git reset --hard $(HEAD)`)
             run(`$git clean -f -d`)
             run(`$git checkout $(saved_branch)`)
+            if !isnothing(branch)
+                run(`$git branch -d $(branch)`)
+            end
         end
     end
 
@@ -523,11 +540,12 @@ function get_tree_hash(package_path, gitconfig)
     git = gitcmd(package_path, gitconfig)
     subdir = readchomp(`$git rev-parse --show-prefix`)
     tree_hash = readchomp(`$git rev-parse HEAD:$subdir`)
+    commit_hash = readchomp(`$git rev-parse HEAD`)
     # Get rid of trailing slash.
     if isempty(basename(subdir))
         subdir = dirname(subdir)
     end
-    return tree_hash, subdir
+    return tree_hash, subdir, commit_hash
 end
 
 function get_remote_repo(package_path, gitconfig)
@@ -542,10 +560,11 @@ function get_remote_repo(package_path, gitconfig)
     return repos[1]
 end
 
-function commit_registry(pkg::Pkg.Types.Project, package_path, package_repo, tree_hash, git)
+function commit_registry(pkg::Pkg.Types.Project, package_path, new_package,
+                         package_repo, tree_hash, git)
     @debug("commit changes")
     message = """
-    New version: $(pkg.name) v$(pkg.version)
+    $(commit_title(pkg, new_package))
 
     UUID: $(pkg.uuid)
     Repo: $(package_repo)
@@ -553,6 +572,51 @@ function commit_registry(pkg::Pkg.Types.Project, package_path, package_repo, tre
     """
     run(`$git add --all`)
     run(`$git commit -qm $message`)
+end
+
+function commit_title(pkg, new_package)
+    registration_type = new_package ? "New package" : "New version"
+    return "$(registration_type): $(pkg.name) v$(pkg.version)"
+end
+
+# Construct the git push options that will automatically create a PR
+# if the registry repo is hosted on GitLab.
+function gitlab(branch, pkg, new_package, repo, commit)
+    # If `branch` hasn't been set, create a branch name.
+    if isnothing(branch)
+        branch = string(pkg.name, "/v", pkg.version)
+    end
+
+    title = commit_title(pkg, new_package)
+    description = """
+    * Registering package: $(pkg.name)
+    * Repository: $(repo)
+    * Version: v$(pkg.version)
+    * Commit: $(commit)
+    """
+
+    # Unfortunately git push options are not allowed to contain
+    # newlines. This makes it difficult to create multiline
+    # descriptions for the merge request by this mechanism. There's an
+    # open issue https://gitlab.com/gitlab-org/gitlab/-/issues/241710
+    # to provide some way around that in GitLab.
+    #
+    # For the time being we use the workaround of replacing the
+    # newlines with HTML `<br>` codes. This works but inhibits the
+    # markdown rendering of the list, so the result does not look
+    # great.
+    description = replace(description, "\n" => "<br>")
+
+    push_options = ["-o", "merge_request.create"]
+    push!(push_options, "-o", "merge_request.title=$title")
+    push!(push_options, "-o", "merge_request.description=$description")
+    # This is intended for automated workflows, so make it as
+    # automatic as possible.
+    push!(push_options, "-o", "merge_request.merge_when_pipeline_succeeds")
+    # No point keeping registration branches around.
+    push!(push_options, "-o", "merge_request.remove_source_branch")
+
+    return branch, push_options
 end
 
 end
