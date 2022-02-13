@@ -227,6 +227,7 @@ function do_register(package, registry;
 
     @info "Registering package" package_path registry_path package_repo uuid=pkg.uuid version=pkg.version tree_hash subdir
     clean_registry = true
+    clean_branch = false
 
     push_options = String[]
     if create_gitlab_mr
@@ -250,6 +251,7 @@ function do_register(package, registry;
             if commit
                 if !isnothing(branch)
                     run(`$git checkout -b $branch`)
+                    clean_branch = true
                 end
                 commit_registry(pkg, package_path, new_package,
                                 package_repo, tree_hash, git)
@@ -269,9 +271,9 @@ function do_register(package, registry;
             run(`$git reset --hard $(HEAD)`)
             run(`$git clean -f -d`)
             run(`$git checkout $(saved_branch)`)
-            if !isnothing(branch)
-                run(`$git branch -d $(branch)`)
-            end
+        end
+        if clean_branch
+            run(`$git branch -d $(branch)`)
         end
     end
 
