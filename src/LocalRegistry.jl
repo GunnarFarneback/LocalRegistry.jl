@@ -605,9 +605,10 @@ function gitlab(branch, pkg, new_package, repo, commit)
     #
     # For the time being we use the workaround of replacing the
     # newlines with HTML `<br>` codes. This works but inhibits the
-    # markdown rendering of the list, so the result does not look
-    # great.
+    # markdown rendering of the list, so we also replace the markdown
+    # item indicators with unicode bullets to make it look a bit better.
     description = replace(description, "\n" => "<br>")
+    description = replace(description, "* " => "• ")
 
     push_options = ["-o", "merge_request.create"]
     push!(push_options, "-o", "merge_request.title=$title")
