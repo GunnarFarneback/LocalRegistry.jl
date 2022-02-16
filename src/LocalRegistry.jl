@@ -596,6 +596,11 @@ function gitlab(branch, pkg, new_package, repo, commit)
     * Version: v$(pkg.version)
     * Commit: $(commit)
     """
+    # Tag the user who started the GitLab job
+    if haskey(ENV, "GITLAB_USER_LOGIN")
+        description = description * "* Triggered by: @$(ENV["GITLAB_USER_LOGIN"])\n"
+    end
+
 
     # Unfortunately git push options are not allowed to contain
     # newlines. This makes it difficult to create multiline

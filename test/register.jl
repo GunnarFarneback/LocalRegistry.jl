@@ -252,64 +252,66 @@ end
 # 4. Register a package with `create_gitlab_mr = true`.
 # 5. Verify that the expected push options were received.
 with_testdir() do testdir
-    upstream_dir = joinpath(testdir, "upstream")
-    mkpath(upstream_dir)
-    upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
-    run(`$(upstream_git) init --bare`)
+    withenv("GITLAB_USER_LOGIN" => "john.doe") do
+        upstream_dir = joinpath(testdir, "upstream")
+        mkpath(upstream_dir)
+        upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
+        run(`$(upstream_git) init --bare`)
 
-    registry_test_dir = joinpath(testdir, "TestGitlabMR")
-    create_registry(registry_test_dir, "file://$(upstream_dir)", push = true,
-                    gitconfig = TEST_GITCONFIG)
+        registry_test_dir = joinpath(testdir, "TestGitlabMR")
+        create_registry(registry_test_dir, "file://$(upstream_dir)", push = true,
+                        gitconfig = TEST_GITCONFIG)
 
-    received_push_options_file = joinpath(testdir, "received_push_options")
-    run(`$(upstream_git) config --local receive.advertisePushOptions true`)
-    pre_receive_hook = joinpath(upstream_dir, "hooks", "pre-receive")
-    write(pre_receive_hook,
-          """
-          #!/bin/sh
-          if test -n "\$GIT_PUSH_OPTION_COUNT"
-          then
-              i=0
-              while test "\$i" -lt "\$GIT_PUSH_OPTION_COUNT"
-              do
-                  eval "value=\\\$GIT_PUSH_OPTION_\$i"
-                  echo \$value >> $(received_push_options_file)
-                  i=\$((i + 1))
-              done
-           fi
-           """)
-    chmod(pre_receive_hook, 0o775)
+        received_push_options_file = joinpath(testdir, "received_push_options")
+        run(`$(upstream_git) config --local receive.advertisePushOptions true`)
+        pre_receive_hook = joinpath(upstream_dir, "hooks", "pre-receive")
+        write(pre_receive_hook,
+              """
+              #!/bin/sh
+              if test -n "\$GIT_PUSH_OPTION_COUNT"
+              then
+                  i=0
+                  while test "\$i" -lt "\$GIT_PUSH_OPTION_COUNT"
+                  do
+                      eval "value=\\\$GIT_PUSH_OPTION_\$i"
+                      echo \$value >> $(received_push_options_file)
+                      i=\$((i + 1))
+                  done
+               fi
+               """)
+        chmod(pre_receive_hook, 0o775)
 
-    packages_dir = joinpath(testdir, "packages")
-    prepare_package(packages_dir, "FirstTest1.toml")
-    register(joinpath(packages_dir, "FirstTest"), registry = registry_test_dir,
-             push = true, create_gitlab_mr = true, gitconfig = TEST_GITCONFIG)
+        packages_dir = joinpath(testdir, "packages")
+        prepare_package(packages_dir, "FirstTest1.toml")
+        register(joinpath(packages_dir, "FirstTest"), registry = registry_test_dir,
+                 push = true, create_gitlab_mr = true, gitconfig = TEST_GITCONFIG)
 
-    package_git = gitcmd(joinpath(packages_dir, "FirstTest"), TEST_GITCONFIG)
-    commit_hash = readchomp(`$(package_git) rev-parse HEAD`)
-    expected_push_options =
-        """
-        merge_request.create
-        merge_request.title=New package: FirstTest v1.0.0
-        merge_request.description=• Registering package: FirstTest<br>• Repository: git@example.com:Julia/FirstTest.jl.git<br>• Version: v1.0.0<br>• Commit: $(commit_hash)<br>
-        merge_request.merge_when_pipeline_succeeds
-        merge_request.remove_source_branch
-        """
-    # Obviously the hook shell script won't be effective on Windows,
-    # but there is no need to perform this test on every platform.
-    if !Sys.iswindows()
-        @test read(received_push_options_file, String) == expected_push_options
+        package_git = gitcmd(joinpath(packages_dir, "FirstTest"), TEST_GITCONFIG)
+        commit_hash = readchomp(`$(package_git) rev-parse HEAD`)
+        expected_push_options =
+            """
+            merge_request.create
+            merge_request.title=New package: FirstTest v1.0.0
+            merge_request.description=• Registering package: FirstTest<br>• Repository: git@example.com:Julia/FirstTest.jl.git<br>• Version: v1.0.0<br>• Commit: $(commit_hash)<br>• Triggered by: @john.doe<br>
+            merge_request.merge_when_pipeline_succeeds
+            merge_request.remove_source_branch
+            """
+        # Obviously the hook shell script won't be effective on Windows,
+        # but there is no need to perform this test on every platform.
+        if !Sys.iswindows()
+            @test read(received_push_options_file, String) == expected_push_options
+        end
+        # Check that the automatically named branch exists in the upstream repo.
+        @test length(readchomp(`$(upstream_git) rev-parse --verify FirstTest/v1.0.0`)) == 40
+
+        # `create_gitlab_mr` requires `push` and `commit`.
+        @test_throws ErrorException register(joinpath(packages_dir, "FirstTest"),
+                                             registry = registry_test_dir,
+                                             push = false, create_gitlab_mr = true,
+                                             gitconfig = TEST_GITCONFIG)
+        @test_throws ErrorException register(joinpath(packages_dir, "FirstTest"),
+                                             registry = registry_test_dir,
+                                             commit = false, create_gitlab_mr = true,
+                                             gitconfig = TEST_GITCONFIG)
     end
-    # Check that the automatically named branch exists in the upstream repo.
-    @test length(readchomp(`$(upstream_git) rev-parse --verify FirstTest/v1.0.0`)) == 40
-
-    # `create_gitlab_mr` requires `push` and `commit`.
-    @test_throws ErrorException register(joinpath(packages_dir, "FirstTest"),
-                                         registry = registry_test_dir,
-                                         push = false, create_gitlab_mr = true,
-                                         gitconfig = TEST_GITCONFIG)
-    @test_throws ErrorException register(joinpath(packages_dir, "FirstTest"),
-                                         registry = registry_test_dir,
-                                         commit = false, create_gitlab_mr = true,
-                                         gitconfig = TEST_GITCONFIG)
 end
