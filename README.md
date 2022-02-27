@@ -61,6 +61,8 @@ using Pkg
 pkg"registry add <repository url>"
 ```
 This only needs to be done once per Julia installation.
+[Troubleshooting advice](docs/troubleshooting_general.md) if you
+cannot find packages from the General registry.
 
 ## Register a Package
 
