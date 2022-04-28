@@ -101,7 +101,7 @@ multiple computers. In order to do so you need to have a remote git
 repository which you and, if desired, other people can connect to to
 get access to your registry.
 
-This tutorial shows how to create the remote repository on GitHub.
+This section shows how to create the remote repository on GitHub.
 Start a web browser and go to the start page of your GitHub account.
 In my case the URL is `https://github.com/GunnarFarneback`. Replace
 the account name with your own. Near the top of the page you should
