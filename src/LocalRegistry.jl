@@ -37,11 +37,12 @@ for example by being a bare repository.
 
 *Keyword arguments*
 
-    create_registry(...; description = nothing, push = false, gitconfig = Dict())
+    create_registry(...; description = nothing, push = false, gitconfig = Dict(), branch = "master")
 
 * `description`: Optional description of the purpose of the registry.
 * `push`: If `false`, the registry will only be prepared locally. Review the result and `git push` it manually.
 * `gitconfig`: Optional configuration parameters for the `git` command.
+* `branch`: Name of the initial branch to use for the registry's repo.
 """
 function create_registry(name_or_path, repo; description = nothing,
                          gitconfig::Dict = Dict(), uuid = nothing,
