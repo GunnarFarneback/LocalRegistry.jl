@@ -45,7 +45,7 @@ for example by being a bare repository.
 """
 function create_registry(name_or_path, repo; description = nothing,
                          gitconfig::Dict = Dict(), uuid = nothing,
-                         push = false)
+                         push = false, branch = "master")
     if length(splitpath(name_or_path)) > 1
         path = abspath(expanduser(name_or_path))
     else
@@ -73,12 +73,12 @@ function create_registry(name_or_path, repo; description = nothing,
     RegistryTools.write_registry(joinpath(path, "Registry.toml"), registry_data)
 
     git = gitcmd(path, gitconfig)
-    run(`$git init -q`)
+    run(`$git init -q --initial-branch=$branch`)
     run(`$git add Registry.toml`)
     run(`$git commit -qm 'Create registry.'`)
     run(`$git remote add origin $repo`)
     if push
-        run(`$git push -u origin master`)
+        run(`$git push -u origin $branch`)
     end
     @info "Created registry in directory $(path)"
 
