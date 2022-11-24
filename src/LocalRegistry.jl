@@ -247,6 +247,7 @@ function do_register(package, registry;
         check_and_update_registry_files(pkg, package_repo, tree_hash,
                                         registry_path, String[], status,
                                         subdir = subdir)
+        check_and_update_glue_files(pkg, package_path, registry_path, status)
         if !haserror(status)
             if commit
                 if !isnothing(branch)
@@ -625,6 +626,115 @@ function gitlab(branch, pkg, new_package, repo, commit)
     push!(push_options, "-o", "merge_request.remove_source_branch")
 
     return branch, push_options
+end
+
+# Prototype of glue-deps and glue-compat support. This should be
+# integrated into `RegistryTools.check_and_update_registry_files` when
+# it's ready.
+function check_and_update_glue_files(pkg, package_path, registry_path, status)
+    # Read in the project file directly to get hold of gluedeps.
+    pkg_toml = read_package_toml(package_path)
+    haskey(pkg_toml, "gluedeps") || return
+
+    # Recreate the necessary data from `check_and_update_registry_files`.
+    registry_file = joinpath(registry_path, "Registry.toml")
+    registry_data = RegistryTools.parse_registry(registry_file)
+    package_registry_path =
+        RegistryTools.find_package_in_registry(pkg, registry_file,
+                                               registry_path,
+                                               registry_data, status)
+    versions_file, versions_data =
+        RegistryTools.get_versions_file(package_registry_path)
+     delete!(versions_data, string(pkg.version))
+    old_versions = RegistryTools.check_versions!(pkg, versions_data, status)
+
+    # update package data: gluedeps file
+    @debug("update package data: gluedeps file")
+    # registry_deps_data = map(registry_deps_paths) do registry_path
+    #     parse_registry(joinpath(registry_path, "Registry.toml"))
+    # end
+    # regdata = [registry_data; registry_deps_data]
+    # check_deps!(pkg, regdata, status)
+    # haserror(status) && return
+    update_gluedeps_file(pkg_toml, package_registry_path, old_versions)
+
+    # update package data: gluecompat file
+    @debug("check gluecompat section")
+    # regpaths = [registry_path; registry_deps_paths]
+    # check_compat!(pkg, regdata, regpaths, status)
+    # haserror(status) && return
+    update_gluecompat_file(pkg_toml, package_registry_path, old_versions)
+end
+
+# Note that Compress.load should load with respect to Versions.toml
+# before update and Compress.save should save with respect to
+# Versions.toml after update. This is handled with the `old_versions'
+# argument and the assumption that Versions.toml has been updated with
+# the new version before calling this function.
+function update_gluedeps_file(pkg,
+                              package_path::AbstractString,
+                              old_versions::Vector{VersionNumber})
+    deps_file = joinpath(package_path, "GlueDeps.toml")
+    if isfile(deps_file)
+        deps_data = RegistryTools.Compress.load(deps_file, old_versions)
+    else
+        deps_data = Dict()
+    end
+
+    deps_data[pkg["version"]] = pkg["gluedeps"]
+    deps_data = Dict(VersionNumber(k) => v for (k, v) in deps_data)
+    RegistryTools.Compress.save(deps_file, deps_data)
+end
+
+# See the comments for `update_deps_file` for the rationale for the
+# `old_versions` argument.
+function update_gluecompat_file(pkg,
+                                package_path::AbstractString,
+                                old_versions::Vector{VersionNumber})
+    @debug("update package data: compat file")
+    compat_file = joinpath(package_path, "GlueCompat.toml")
+    if isfile(compat_file)
+        compat_data = RegistryTools.Compress.load(compat_file, old_versions)
+    else
+        compat_data = Dict()
+    end
+
+    d = Dict()
+    for (name, version) in pkg["compat"]
+        if !haskey(pkg["gluedeps"], name)
+            @debug("$name is in compat but not in gluedeps, omitted.")
+            continue
+        end
+
+        if Base.VERSION >= v"1.7-"
+            # spec = version.val
+            spec = Pkg.Versions.semver_spec(version)
+        else
+            spec = Pkg.Types.semver_spec(version)
+        end
+        # The call to `map(versionrange, )` can be removed
+        # once Pkg is updated to a version including
+        # https://github.com/JuliaLang/Pkg.jl/pull/1181
+        # and support for older versions is dropped.
+        # ranges = map(r->versionrange(r.lower, r.upper), spec.ranges)
+        ranges = spec.ranges
+        ranges = RegistryTools.VersionSpec(ranges).ranges # this combines joinable ranges
+        d[name] = length(ranges) == 1 ? string(ranges[1]) : map(string, ranges)
+    end
+
+    compat_data[pkg["version"]] = d
+    compat_data = Dict(VersionNumber(k) => v for (k, v) in compat_data)
+    RegistryTools.Compress.save(compat_file, compat_data)
+end
+
+function read_package_toml(package_path)
+    for project_file in Base.project_names
+        project_path = joinpath(package_path, project_file)
+        if isfile(project_path)
+            return TOML.parsefile(project_path)
+        end
+    end
+    error("Failed to find project file.")
 end
 
 end
