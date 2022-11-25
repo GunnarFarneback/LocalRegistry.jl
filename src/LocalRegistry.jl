@@ -170,6 +170,13 @@ function do_register(package, registry;
     if isnothing(pkg.name)
         error("$(package) does not have a Project.toml or JuliaProject.toml file")
     end
+    if isnothing(pkg.uuid)
+        error("$(package) does not have a UUID")
+    end
+    if isnothing(pkg.version)
+        error("$(package) does not have a version")
+    end
+
 
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
