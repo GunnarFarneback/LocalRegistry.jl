@@ -45,7 +45,11 @@ function prepare_package(packages_dir, project_file, subdir = "";
     write(joinpath(package_dir, "test", "runtests.jl"),
           "using Test\n@test true\n")
     run(`$git add --all`)
-    vers = "Version $(version)"
+    vers = if isnothing(version)
+        "No version"
+    else
+        "Version $(version)"
+    end
     @show vers
     if !occursin("nothing to commit, working tree clean",
                 read(`$git status`, String))
