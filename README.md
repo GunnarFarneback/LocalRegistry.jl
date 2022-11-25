@@ -68,7 +68,7 @@ cannot find packages from the General registry.
 
 ```
 using LocalRegistry
-register(package, registry = registry)
+register(package; registry = registry)
 ```
 
 Register the new `package` in the registry `registry`. The version
