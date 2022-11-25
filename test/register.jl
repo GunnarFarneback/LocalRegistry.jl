@@ -315,3 +315,30 @@ with_testdir() do testdir
                                              gitconfig = TEST_GITCONFIG)
     end
 end
+
+# No UUID nor version
+with_empty_registry() do registry_dir, packages_dir
+    prepare_package(packages_dir, "NonPackageProject1.toml")
+    @test_throws ErrorException register(joinpath(packages_dir, "JuliaProjectTest"),
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false)
+end
+
+# No version
+with_empty_registry() do registry_dir, packages_dir
+    prepare_package(packages_dir, "NonPackageProject2.toml")
+    @test_throws ErrorException register(joinpath(packages_dir, "JuliaProjectTest"),
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false)
+end
+
+# No UUID
+with_empty_registry() do registry_dir, packages_dir
+    prepare_package(packages_dir, "NonPackageProject3.toml")
+    @test_throws ErrorException register(joinpath(packages_dir, "JuliaProjectTest"),
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false)
+end

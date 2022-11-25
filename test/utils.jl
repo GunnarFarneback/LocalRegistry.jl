@@ -12,7 +12,7 @@ function prepare_package(packages_dir, project_file, subdir = "";
     project_file = joinpath(@__DIR__, "project_files", project_file)
     project_data = TOML.parsefile(project_file)
     name = project_data["name"]
-    version = project_data["version"]
+    version = get(project_data, "version", nothing)
     # Fake repository URL.
     repo = "git@example.com:Julia/$(name).jl.git"
     top_dir = joinpath(packages_dir, name)
