@@ -351,3 +351,30 @@ with_empty_registry() do registry_dir, packages_dir
                                          gitconfig = TEST_GITCONFIG,
                                          push = false)
 end
+
+# Yes module file, with .jl in package_name
+with_empty_registry() do registry_dir, packages_dir
+    prepare_package(packages_dir, "Fluxjl1.toml")
+    @test register(joinpath(packages_dir, "Flux.jl"),
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false) === nothing
+end
+
+# Yes module file, with weird extension in package_name
+with_empty_registry() do registry_dir, packages_dir
+    prepare_package(packages_dir, "Fluxexe1.toml")
+    @test register(joinpath(packages_dir, "Flux.exe"),
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false) === nothing
+end
+
+# Yes module file, with weird extension and .jl in package_name
+with_empty_registry() do registry_dir, packages_dir
+    prepare_package(packages_dir, "Fluxexejl1.toml")
+    @test register(joinpath(packages_dir, "Flux.exe.jl"),
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false) === nothing
+end
