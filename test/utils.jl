@@ -42,14 +42,7 @@ function prepare_package(packages_dir, project_file, subdir = "";
     write(joinpath(package_dir, "README.md"), "# $(name)\n")
     write(joinpath(package_dir, "LICENSE"), "$(name) is in the public domain\n")
     if module_file
-        name_root, name_ext = splitext(name)
-        module_filename = if name_ext == ".jl"
-            name
-        else
-            join([name_root, name_ext, ".jl"])
-        end
-        @show joinpath(package_dir, "src", module_filename)
-        write(joinpath(package_dir, "src", module_filename), "module $(name_root)\nend\n")
+        write(joinpath(package_dir, "src", "$(name).jl"), "module $(name)\nend\n")
     end
     write(joinpath(package_dir, "test", "runtests.jl"),
           "using Test\n@test true\n")
