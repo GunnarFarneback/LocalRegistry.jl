@@ -185,6 +185,7 @@ function do_register(package, registry;
         # 2) other extension (e.g. "MyPackage.exe")
         join([pkg_filename_root, pkg_filename_ext, ".jl"])
     end
+    @show joinpath(package_path, "src", pkg_filename)
     if !isfile(joinpath(package_path, "src", pkg_filename))
         error("$(package) is not a valid package (no src/$(pkg_filename))")
     end
