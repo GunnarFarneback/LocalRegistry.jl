@@ -8,7 +8,7 @@ using Pkg: Pkg, TOML
 # file that matter. Additional files are added to make the set up
 # somewhat more normal looking.
 function prepare_package(packages_dir, project_file, subdir = "";
-                         use_julia_project = false)
+                         use_julia_project = false, module_file=true)
     project_file = joinpath(@__DIR__, "project_files", project_file)
     project_data = TOML.parsefile(project_file)
     name = project_data["name"]
@@ -41,7 +41,9 @@ function prepare_package(packages_dir, project_file, subdir = "";
     end
     write(joinpath(package_dir, "README.md"), "# $(name)\n")
     write(joinpath(package_dir, "LICENSE"), "$(name) is in the public domain\n")
-    write(joinpath(package_dir, "src", "$(name).jl"), "module $(name)\nend\n")
+    if module_file
+        write(joinpath(package_dir, "src", "$(name).jl"), "module $(name)\nend\n")
+    end
     write(joinpath(package_dir, "test", "runtests.jl"),
           "using Test\n@test true\n")
     run(`$git add --all`)
