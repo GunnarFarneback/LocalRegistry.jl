@@ -176,16 +176,7 @@ function do_register(package, registry;
     if isnothing(pkg.version)
         error("$(package) is not a valid package (no version)")
     end
-    (pkg_filename_root, pkg_filename_ext) = splitext(pkg.name)
-    pkg_filename = if pkg_filename_ext == ".jl"
-        pkg.name
-    else
-        # accounts for possibilities
-        # 1) no extension (e.g. "LocalRegistry")
-        # 2) other extension (e.g. "MyPackage.exe")
-        join([pkg_filename_root, pkg_filename_ext, ".jl"])
-    end
-    @show joinpath(package_path, "src", pkg_filename)
+    pkg_filename = "$(pkg.name).jl"
     if !isfile(joinpath(package_path, "src", pkg_filename))
         error("$(package) is not a valid package (no src/$(pkg_filename))")
     end
