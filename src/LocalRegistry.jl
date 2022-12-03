@@ -247,7 +247,7 @@ function do_register(package, registry;
         check_and_update_registry_files(pkg, package_repo, tree_hash,
                                         registry_path, String[], status,
                                         subdir = subdir)
-        check_and_update_glue_files(pkg, package_path, registry_path, status)
+        check_and_update_weak_files(pkg, package_path, registry_path, status)
         if !haserror(status)
             if commit
                 if !isnothing(branch)
@@ -628,13 +628,13 @@ function gitlab(branch, pkg, new_package, repo, commit)
     return branch, push_options
 end
 
-# Prototype of glue-deps and glue-compat support. This should be
+# Prototype of weak-deps and weak-compat support. This should be
 # integrated into `RegistryTools.check_and_update_registry_files` when
 # it's ready.
-function check_and_update_glue_files(pkg, package_path, registry_path, status)
-    # Read in the project file directly to get hold of gluedeps.
+function check_and_update_weak_files(pkg, package_path, registry_path, status)
+    # Read in the project file directly to get hold of weakdeps.
     pkg_toml = read_package_toml(package_path)
-    haskey(pkg_toml, "gluedeps") || return
+    haskey(pkg_toml, "weakdeps") || return
 
     # Recreate the necessary data from `check_and_update_registry_files`.
     registry_file = joinpath(registry_path, "Registry.toml")
@@ -648,22 +648,22 @@ function check_and_update_glue_files(pkg, package_path, registry_path, status)
      delete!(versions_data, string(pkg.version))
     old_versions = RegistryTools.check_versions!(pkg, versions_data, status)
 
-    # update package data: gluedeps file
-    @debug("update package data: gluedeps file")
+    # update package data: weakdeps file
+    @debug("update package data: weakdeps file")
     # registry_deps_data = map(registry_deps_paths) do registry_path
     #     parse_registry(joinpath(registry_path, "Registry.toml"))
     # end
     # regdata = [registry_data; registry_deps_data]
     # check_deps!(pkg, regdata, status)
     # haserror(status) && return
-    update_gluedeps_file(pkg_toml, package_registry_path, old_versions)
+    update_weakdeps_file(pkg_toml, package_registry_path, old_versions)
 
-    # update package data: gluecompat file
-    @debug("check gluecompat section")
+    # update package data: weakcompat file
+    @debug("check weakcompat section")
     # regpaths = [registry_path; registry_deps_paths]
     # check_compat!(pkg, regdata, regpaths, status)
     # haserror(status) && return
-    update_gluecompat_file(pkg_toml, package_registry_path, old_versions)
+    update_weakcompat_file(pkg_toml, package_registry_path, old_versions)
 end
 
 # Note that Compress.load should load with respect to Versions.toml
@@ -671,28 +671,28 @@ end
 # Versions.toml after update. This is handled with the `old_versions'
 # argument and the assumption that Versions.toml has been updated with
 # the new version before calling this function.
-function update_gluedeps_file(pkg,
+function update_weakdeps_file(pkg,
                               package_path::AbstractString,
                               old_versions::Vector{VersionNumber})
-    deps_file = joinpath(package_path, "GlueDeps.toml")
+    deps_file = joinpath(package_path, "WeakDeps.toml")
     if isfile(deps_file)
         deps_data = RegistryTools.Compress.load(deps_file, old_versions)
     else
         deps_data = Dict()
     end
 
-    deps_data[pkg["version"]] = pkg["gluedeps"]
+    deps_data[pkg["version"]] = pkg["weakdeps"]
     deps_data = Dict(VersionNumber(k) => v for (k, v) in deps_data)
     RegistryTools.Compress.save(deps_file, deps_data)
 end
 
 # See the comments for `update_deps_file` for the rationale for the
 # `old_versions` argument.
-function update_gluecompat_file(pkg,
+function update_weakcompat_file(pkg,
                                 package_path::AbstractString,
                                 old_versions::Vector{VersionNumber})
     @debug("update package data: compat file")
-    compat_file = joinpath(package_path, "GlueCompat.toml")
+    compat_file = joinpath(package_path, "WeakCompat.toml")
     if isfile(compat_file)
         compat_data = RegistryTools.Compress.load(compat_file, old_versions)
     else
@@ -701,8 +701,8 @@ function update_gluecompat_file(pkg,
 
     d = Dict()
     for (name, version) in pkg["compat"]
-        if !haskey(pkg["gluedeps"], name)
-            @debug("$name is in compat but not in gluedeps, omitted.")
+        if !haskey(pkg["weakdeps"], name)
+            @debug("$name is in compat but not in weakdeps, omitted.")
             continue
         end
 
