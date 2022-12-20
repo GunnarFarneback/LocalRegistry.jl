@@ -4,9 +4,11 @@
 # variants have to interact with the package environment, including
 # registries, of the running Julia process.
 
+import RegistryTools
+
 # Not a registered package.
-pkg = Pkg.Types.Project(Dict("name" => "UUIDs",
-                             "uuid" => "cf7118a7-6976-5b1a-9a39-7adc72f591a4"))
+pkg = RegistryTools.Project(Dict("name" => "UUIDs",
+                                 "uuid" => "cf7118a7-6976-5b1a-9a39-7adc72f591a4"))
 @test_throws ErrorException find_registry_path(nothing, pkg)
 
 
@@ -28,7 +30,7 @@ with_empty_registry() do registry_dir, packages_dir
 
     # Find a registry by name.
     package_path = find_package_path("Multibreak")
-    pkg = Pkg.Types.read_project(joinpath(package_path, "Project.toml"))
+    pkg = RegistryTools.Project(joinpath(package_path, "Project.toml"))
     @test find_registry_path("TestRegistry") == joinpath(first(DEPOT_PATH),
                                                          "registries",
                                                          "TestRegistry")

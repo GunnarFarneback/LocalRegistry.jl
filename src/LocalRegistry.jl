@@ -14,7 +14,7 @@ module LocalRegistry
 
 using RegistryTools: RegistryTools, gitcmd, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
-                     find_registered_version
+                     find_registered_version, Project
 using UUIDs: uuid4
 using Pkg: Pkg, TOML
 
@@ -162,7 +162,7 @@ function do_register(package, registry;
     package_path = find_package_path(package)
     local pkg
     for project_file in Base.project_names
-        pkg = Pkg.Types.read_project(joinpath(package_path, project_file))
+        pkg = Project(joinpath(package_path, project_file))
         if !isnothing(pkg.name)
             break
         end
@@ -264,7 +264,7 @@ function do_register(package, registry;
                     run(`$git checkout -b $branch`)
                     clean_branch = true
                 end
-                commit_registry(pkg, package_path, new_package,
+                commit_registry(pkg, new_package,
                                 package_repo, tree_hash, git)
                 if push
                     if isnothing(branch)
@@ -395,7 +395,7 @@ function find_package_path(package_name::AbstractString)
     return pkg_path
 end
 
-function find_registry_path(registry::AbstractString, ::Pkg.Types.Project)
+function find_registry_path(registry::AbstractString, ::Project)
     return find_registry_path(registry)
 end
 
@@ -417,7 +417,7 @@ function find_registry_path(registry::AbstractString)
     return registry
 end
 
-function find_registry_path(::Nothing, pkg::Pkg.Types.Project)
+function find_registry_path(::Nothing, pkg::Project)
     all_registries = collect_registries()
     all_registries_but_general = filter(r -> r.name != "General",
                                         all_registries)
@@ -544,7 +544,7 @@ function collect_registries()
     return registries
 end
 
-function has_package(registry_path, pkg::Pkg.Types.Project)
+function has_package(registry_path, pkg::Project)
     registry = Pkg.TOML.parsefile(joinpath(registry_path, "Registry.toml"))
     return haskey(registry["packages"], string(pkg.uuid))
 end
@@ -573,7 +573,7 @@ function get_remote_repo(package_path, gitconfig)
     return repos[1]
 end
 
-function commit_registry(pkg::Pkg.Types.Project, package_path, new_package,
+function commit_registry(pkg::Project, new_package,
                          package_repo, tree_hash, git)
     @debug("commit changes")
     message = """
