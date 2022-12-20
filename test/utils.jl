@@ -153,7 +153,7 @@ function sanity_check_registry(path)
             end
         end
     end
-    
+
     return true
 end
 

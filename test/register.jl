@@ -4,7 +4,7 @@ with_empty_registry() do registry_dir, packages_dir
     register(joinpath(packages_dir, "Flux"),
              registry = registry_dir,
              gitconfig = TEST_GITCONFIG,
-             push = false)    
+             push = false)
     prepare_package(packages_dir, "Flux30.toml")
     @test_throws ErrorException register(joinpath(packages_dir, "Flux"),
                                          registry = registry_dir,
@@ -19,17 +19,10 @@ end
 # Parse error in compat section.
 with_empty_registry() do registry_dir, packages_dir
     prepare_package(packages_dir, "Broken1.toml")
-    if VERSION < v"1.2"
-        @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                             registry = registry_dir,
-                                             gitconfig = TEST_GITCONFIG,
-                                             push = false)
-    else
-        @test_throws Pkg.Types.PkgError register(joinpath(packages_dir, "Broken"),
-                                                 registry = registry_dir,
-                                                 gitconfig = TEST_GITCONFIG,
-                                                 push = false)
-    end
+    @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
+                                                registry = registry_dir,
+                                                gitconfig = TEST_GITCONFIG,
+                                                push = false)
 end
 
 # Try to change name (UUID remains).
@@ -38,7 +31,7 @@ with_empty_registry() do registry_dir, packages_dir
     register(joinpath(packages_dir, "Flux"),
              registry = registry_dir,
              gitconfig = TEST_GITCONFIG,
-             push = false)    
+             push = false)
     prepare_package(packages_dir, "Fluxx1.toml")
     @test_throws ErrorException register(joinpath(packages_dir, "Fluxx"),
                                          registry = registry_dir,
@@ -52,7 +45,7 @@ with_empty_registry() do registry_dir, packages_dir
     register(joinpath(packages_dir, "Flux"),
              registry = registry_dir,
              gitconfig = TEST_GITCONFIG,
-             push = false)    
+             push = false)
     prepare_package(packages_dir, "Flux31.toml")
     @test_throws ErrorException register(joinpath(packages_dir, "Flux"),
                                          registry = registry_dir,
@@ -75,7 +68,7 @@ with_empty_registry() do registry_dir, packages_dir
     register(joinpath(packages_dir, "Flux"),
              registry = registry_dir,
              gitconfig = TEST_GITCONFIG,
-             push = false)    
+             push = false)
     prepare_package(packages_dir, "Broken3.toml")
     @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
                                          registry = registry_dir,
@@ -105,7 +98,7 @@ with_empty_registry() do registry_dir, packages_dir
     register(joinpath(packages_dir, "Flux"),
              registry = registry_dir,
              gitconfig = TEST_GITCONFIG,
-             push = false)    
+             push = false)
     # Change the git remote before registration and verify that the
     # registered repo is not changed.
     prepare_package(packages_dir, "Flux32.toml")
