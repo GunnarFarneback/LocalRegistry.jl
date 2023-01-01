@@ -158,11 +158,7 @@ function sanity_check_registry(path)
 end
 
 function with_testdir(f::Function)
-    if VERSION >= v"1.2"
-        testdir = mktempdir(prefix = "LocalRegistryTests")
-    else
-        testdir = mktempdir()
-    end
+    testdir = mktempdir(prefix = "LocalRegistryTests")
     f(testdir)
     rm(testdir, recursive = true)
 end

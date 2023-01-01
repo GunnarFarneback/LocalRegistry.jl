@@ -20,9 +20,9 @@ end
 with_empty_registry() do registry_dir, packages_dir
     prepare_package(packages_dir, "Broken1.toml")
     @test_throws ErrorException register(joinpath(packages_dir, "Broken"),
-                                                registry = registry_dir,
-                                                gitconfig = TEST_GITCONFIG,
-                                                push = false)
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false)
 end
 
 # Try to change name (UUID remains).

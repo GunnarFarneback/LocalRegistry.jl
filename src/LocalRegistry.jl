@@ -334,23 +334,12 @@ end
 # * use the active project if it corresponds to a package,
 # * otherwise use the current directory.
 function find_package_path(::Nothing)
-    path = pwd()
-    if VERSION < v"1.4"
-        env = Pkg.Types.EnvCache()
-        if !isnothing(env.pkg)
-            path = dirname(env.project_file)
-        end
-    else
-        # Pkg.project() was introduced in Julia 1.4 as an experimental
-        # feature. Effectively this does the same thing as the code
-        # above but is hopefully more future safe.
-        project = Pkg.project()
-        if project.ispackage
-            path = dirname(project.path)
-        end
+    project = Pkg.project()
+    if project.ispackage
+        return dirname(project.path)
     end
 
-    return path
+    return pwd()
 end
 
 # If the package is provided as a module, directly find the package
@@ -409,7 +398,7 @@ function find_registry_path(registry::AbstractString)
 
     # 2. Is `registry` an existing path?
     path = abspath(expanduser(registry))
-    if checked_ispath(path)
+    if ispath(path)
         return path
     end
 
@@ -449,7 +438,7 @@ end
 # Either way, LocalRegistry must have a git clone to work with, so if
 # the registry is not in that form, make a temporary git clone.
 function check_git_registry(registry_path_or_url, gitconfig)
-    if !checked_ispath(registry_path_or_url)
+    if !ispath(registry_path_or_url)
         # URL given. Use this to make a git clone.
         url = registry_path_or_url
     elseif isdir(joinpath(registry_path_or_url, ".git"))
@@ -458,7 +447,7 @@ function check_git_registry(registry_path_or_url, gitconfig)
     else
         # Registry is given as a path but is not a git clone. Find the
         # URL of the registry from Registry.toml.
-        if VERSION >= v"1.7-"
+        if VERSION >= v"1.7"
             # This handles both packed and unpacked registries.
             try
                 url = Pkg.Registry.RegistryInstance(registry_path_or_url).repo
@@ -475,10 +464,8 @@ function check_git_registry(registry_path_or_url, gitconfig)
         end
     end
 
-    # Make a temporary clone of the registry at `url`. For Julia 1.3
-    # and later this will be automatically removed when Julia exits.
-    # For older Julia it will linger around. Upgrade your Julia if you
-    # don't like that.
+    # Make a temporary clone of the registry at `url`. This will be
+    # automatically removed when Julia exits.
     path = mktempdir()
     git = gitcmd(path, gitconfig)
     try
@@ -488,20 +475,6 @@ function check_git_registry(registry_path_or_url, gitconfig)
         error("Failed to make a temporary git clone of $url")
     end
     return path, true
-end
-
-# On sufficiently old Julia versions (including 1.1 but not 1.5) and
-# Windows, `ispath` errors instead of returning false for (at least
-# some) invalid paths, like e.g. "file://path".
-function checked_ispath(path)
-    if Sys.iswindows()
-        try
-            return ispath(path)
-        catch
-            return false
-        end
-    end
-    return ispath(path)
 end
 
 function looks_like_tar_registry(path)
