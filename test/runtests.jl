@@ -47,7 +47,3 @@ end
 @testset "Check git registry" begin
     include("check_git_registry.jl")
 end
-
-if VERSION < v"1.2"
-    rm(depot_path, recursive = true)
-end

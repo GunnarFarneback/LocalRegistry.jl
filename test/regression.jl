@@ -14,11 +14,7 @@
 # project file is derived from this package.
 
 # Set up packages and registry directories in a temporary location.
-if VERSION >= v"1.2"
-    testdir = mktempdir(prefix = "LocalRegistryTests")
-else
-    testdir = mktempdir()
-end
+testdir = mktempdir(prefix = "LocalRegistryTests")
 packages_dir = joinpath(testdir, "packages")
 if packages_dir ∉ LOAD_PATH
     push!(LOAD_PATH, packages_dir)
