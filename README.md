@@ -16,7 +16,8 @@ companion package
 
 ## Compatibility
 
-This package requires Julia 1.1 or later.
+This package requires Julia 1.6 or later. Older versions of the
+package work back to Julia 1.1.
 
 ## Prerequisites
 
@@ -50,8 +51,9 @@ The repository at `repository_url` must be able to be pushed to,
 for example by being a bare repository. `repository_url` itself
 can be an URL, or a path to a local git repository.
 
-The registry can also be created at a specified path. See the
-documentation string for details.
+The registry can also be created at a specified path, with a specified
+branch, or being automatically pushed. See the documentation string
+for details.
 
 ## Add Registry
 
