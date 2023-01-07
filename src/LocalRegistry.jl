@@ -37,15 +37,21 @@ for example by being a bare repository.
 
 *Keyword arguments*
 
-    create_registry(...; description = nothing, push = false, gitconfig = Dict())
+    create_registry(...; description = nothing, push = false,
+                    branch = nothing, gitconfig = Dict())
 
 * `description`: Optional description of the purpose of the registry.
-* `push`: If `false`, the registry will only be prepared locally. Review the result and `git push` it manually.
+* `push`: If `false`, the registry will only be prepared locally.
+  Review the result and `git push` it manually. If `true`, the upstream
+  repository is first cloned (if possible) before creating the registry.
+* `branch`: Create the registry in the specified branch. Default is to
+  use the upstream branch if `push` is `true` and otherwise the default
+  branch name configured for `git init`.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 """
 function create_registry(name_or_path, repo; description = nothing,
                          gitconfig::Dict = Dict(), uuid = nothing,
-                         push = false)
+                         push = false, branch = nothing)
     if length(splitpath(name_or_path)) > 1
         path = abspath(expanduser(name_or_path))
     else
@@ -62,7 +68,21 @@ function create_registry(name_or_path, repo; description = nothing,
     end
     mkpath(path)
 
-    # The only reason for the `uuid` function argument is to allow
+    git = gitcmd(path, gitconfig)
+    git_repo_cloned = false
+
+    if push
+        # The upstream repo may or may not exist. Even if it doesn't
+        # yet exist, it might be possible to push to it. E.g. GitLab
+        # can create a repository on demand when pushed to.
+        try
+            run(`$git clone -q $repo .`)
+            git_repo_cloned = true
+        catch
+        end
+    end
+
+    # The only reason for the `uuid` keyword argument is to allow
     # deterministic testing of the package.
     if isnothing(uuid)
         uuid = string(uuid4())
@@ -72,13 +92,19 @@ function create_registry(name_or_path, repo; description = nothing,
                                                description = description)
     RegistryTools.write_registry(joinpath(path, "Registry.toml"), registry_data)
 
-    git = gitcmd(path, gitconfig)
-    run(`$git init -q`)
+    if !git_repo_cloned
+        run(`$git init -q`)
+        run(`$git remote add origin $repo`)
+    end
+
+    if !isnothing(branch)
+        run(`$git checkout -b $branch`)
+    end
+
     run(`$git add Registry.toml`)
     run(`$git commit -qm 'Create registry.'`)
-    run(`$git remote add origin $repo`)
     if push
-        run(`$git push -u origin master`)
+        run(`$git push -u origin HEAD`)
     end
     @info "Created registry in directory $(path)"
 

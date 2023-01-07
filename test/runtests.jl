@@ -32,6 +32,10 @@ Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
     include("regression.jl")
 end
 
+@testset "Create registry" begin
+    include("create_registry.jl")
+end
+
 @testset "Register tests" begin
     include("register.jl")
 end
