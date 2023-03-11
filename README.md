@@ -102,12 +102,6 @@ When adding a new version of a package, the registry can be
 omitted. The new version number is obtained from the `version` field
 of the package's `Project.toml` file.
 
-## Delete a Package
-
-Manually delete the files (typically `Compat.toml`, `Deps.toml`,
-`Package.toml` and `Versions.toml`) for the package, edit
-`Register.toml`, commit and push the result.
-
 ## Simplified Registration of Active Package or Current Directory
 
 If you start Julia with the `--project` flag or use `Pkg.activate` to
@@ -130,3 +124,4 @@ will look for a package in the current directory.
 * [Registering a Package in a Subdirectory of a Repository](docs/subdir.md)
 * [Migrating Packages from the General Registry](docs/migration_from_general.md)
 * [Using LocalRegistry on a Shared Filesysem](docs/shared_filesystem.md)
+* [Delete a Registered Package](docs/delete_package.md)
