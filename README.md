@@ -124,3 +124,4 @@ will look for a package in the current directory.
 * [Registering a Package in a Subdirectory of a Repository](docs/subdir.md)
 * [Migrating Packages from the General Registry](docs/migration_from_general.md)
 * [Using LocalRegistry on a Shared Filesysem](docs/shared_filesystem.md)
+* [Delete a Registered Package](docs/delete_package.md)
