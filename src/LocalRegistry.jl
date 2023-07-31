@@ -16,7 +16,8 @@ using RegistryTools: RegistryTools, gitcmd, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
                      find_registered_version, Project
 using UUIDs: uuid4
-using Pkg: Pkg, TOML
+import Pkg
+import TOML
 
 export create_registry, register
 
@@ -438,7 +439,7 @@ function find_registry_path(::Nothing, pkg::Project)
                                         all_registries)
 
     matching_registries = filter(all_registries) do reg_spec
-        reg_data = Pkg.TOML.parsefile(joinpath(reg_spec.path, "Registry.toml"))
+        reg_data = TOML.parsefile(joinpath(reg_spec.path, "Registry.toml"))
         haskey(reg_data["packages"], string(pkg.uuid))
     end
 
@@ -486,7 +487,7 @@ function check_git_registry(registry_path_or_url, gitconfig)
             elseif !isdir(registry_path_or_url)
                 error("Bad registry path: $(registry_path_or_url)")
             end
-            url = Pkg.TOML.parsefile(joinpath(registry_path_or_url, "Registry.toml"))["repo"]
+            url = TOML.parsefile(joinpath(registry_path_or_url, "Registry.toml"))["repo"]
         end
     end
 
@@ -507,7 +508,7 @@ function looks_like_tar_registry(path)
     endswith(path, ".toml") || return false
     isfile(path) || return false
     try
-        return haskey(Pkg.TOML.parsefile(path), "git-tree-sha1")
+        return haskey(TOML.parsefile(path), "git-tree-sha1")
     catch
         return false
     end
@@ -544,7 +545,7 @@ function collect_registries()
 end
 
 function has_package(registry_path, pkg::Project)
-    registry = Pkg.TOML.parsefile(joinpath(registry_path, "Registry.toml"))
+    registry = TOML.parsefile(joinpath(registry_path, "Registry.toml"))
     return haskey(registry["packages"], string(pkg.uuid))
 end
 
