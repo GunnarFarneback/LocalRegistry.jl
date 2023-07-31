@@ -392,26 +392,39 @@ function find_package_path(package_name::AbstractString)
         return abspath(expanduser(package_name))
     end
 
-    ctx = Pkg.Types.Context()
-    if !haskey(ctx.env.project.deps, package_name)
+    manifest = get_current_manifest()
+    if VersionNumber(get(manifest, "manifest_format", "1")) > v"2.0"
+        @warn("Unsupported manifest format, trying anyway.")
+    end
+    deps = manifest["deps"]
+    if !haskey(deps, package_name)
         error("Unknown package $package_name.")
     end
-    pkg_uuid = ctx.env.project.deps[package_name]
-    pkg_path = ctx.env.manifest[pkg_uuid].path
+    package = deps[package_name]
+    length(package) > 1 && error("Multiple packages of the same name in the environment is not supported")
+    pkg_path = get(only(package), "path", nothing)
     if isnothing(pkg_path)
         error("Package must be developed to be registered.")
-    elseif !isabspath(pkg_path)
-        # If the package is developed with --local, pkg_path is
-        # relative to the project path.
-        pkg_path = joinpath(dirname(ctx.env.manifest_file), pkg_path)
     end
 
     # `pkg_path` might be a relative path, in which case it is
     # relative to the directory of Manifest.toml. If `pkg_path`
     # already is an absolute path, this call does not affect it.
-    pkg_path = abspath(dirname(ctx.env.manifest_file), pkg_path)
+    pkg_path = abspath(dirname(Base.active_project()), pkg_path)
 
     return pkg_path
+end
+
+function get_current_manifest()
+    project_dir = dirname(Base.active_project())
+    for manifest_name in Base.manifest_names
+        manifest_path = joinpath(project_dir, manifest_name)
+        if isfile(manifest_path)
+            return TOML.parsefile(manifest_path)
+        end
+    end
+
+    return Dict("deps" => Dict{String, Any}())
 end
 
 function find_registry_path(registry::AbstractString, ::Project)
