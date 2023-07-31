@@ -1,4 +1,7 @@
-using RegistryTools: gitcmd, Compress
+# Note: This file is also included by LocalPackageServer tests.
+
+using LocalRegistry: gitcmd
+using RegistryTools: Compress
 import Pkg
 import TOML
 
