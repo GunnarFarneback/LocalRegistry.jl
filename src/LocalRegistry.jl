@@ -361,9 +361,12 @@ end
 # * use the active project if it corresponds to a package,
 # * otherwise use the current directory.
 function find_package_path(::Nothing)
-    project = Pkg.project()
-    if project.ispackage
-        return dirname(project.path)
+    path = Base.active_project()
+    project = TOML.parsefile(path)
+    # The active project is considered a package if it has a name and
+    # a uuid, which is the definition Pkg uses.
+    if haskey(project, "name") && haskey(project, "uuid")
+        return dirname(path)
     end
 
     return pwd()
