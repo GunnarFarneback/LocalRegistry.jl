@@ -1,5 +1,6 @@
 using RegistryTools: gitcmd, Compress
-using Pkg: Pkg, TOML
+import Pkg
+import TOML
 
 # Read `project_file` and create or update a corresponding bare bones
 # package directory under `package_dir`. Commit the changes to git.
