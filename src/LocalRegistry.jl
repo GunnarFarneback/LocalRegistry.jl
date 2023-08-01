@@ -15,6 +15,7 @@ module LocalRegistry
 using RegistryTools: RegistryTools, gitcmd, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
                      find_registered_version, Project
+using RegistryInstances: RegistryInstance
 using UUIDs: uuid4
 import Pkg
 import TOML
@@ -490,20 +491,12 @@ function check_git_registry(registry_path_or_url, gitconfig)
     else
         # Registry is given as a path but is not a git clone. Find the
         # URL of the registry from Registry.toml.
-        if VERSION >= v"1.7"
-            # This handles both packed and unpacked registries.
-            try
-                url = Pkg.Registry.RegistryInstance(registry_path_or_url).repo
-            catch
-                error("Bad registry path: $(registry_path_or_url)")
-            end
-        else
-            if looks_like_tar_registry(registry_path_or_url)
-                error("Non-unpacked registries require Julia 1.7 or later.")
-            elseif !isdir(registry_path_or_url)
-                error("Bad registry path: $(registry_path_or_url)")
-            end
-            url = TOML.parsefile(joinpath(registry_path_or_url, "Registry.toml"))["repo"]
+
+        # This handles both packed and unpacked registries.
+        try
+            url = RegistryInstance(registry_path_or_url).repo
+        catch
+            error("Bad registry path: $(registry_path_or_url)")
         end
     end
 
@@ -518,16 +511,6 @@ function check_git_registry(registry_path_or_url, gitconfig)
         error("Failed to make a temporary git clone of $url")
     end
     return path, true
-end
-
-function looks_like_tar_registry(path)
-    endswith(path, ".toml") || return false
-    isfile(path) || return false
-    try
-        return haskey(TOML.parsefile(path), "git-tree-sha1")
-    catch
-        return false
-    end
 end
 
 # This replaces the use of `Pkg.Types.collect_registries`, which was
