@@ -39,12 +39,7 @@ with_testdir() do testdir
              uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369"
              path = "TestRegistry.tar.gz"
           """)
-    if VERSION < v"1.7-"
-        @test_throws ErrorException check_git_registry(registry_toml,
-                                                       TEST_GITCONFIG)
-    else
-        reg_path, is_temp = check_git_registry(registry_toml, TEST_GITCONFIG)
-        @test isdir(joinpath(reg_path, ".git"))
-        @test is_temp
-    end
+    reg_path, is_temp = check_git_registry(registry_toml, TEST_GITCONFIG)
+    @test isdir(joinpath(reg_path, ".git"))
+    @test is_temp
 end
