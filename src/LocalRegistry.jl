@@ -15,7 +15,7 @@ module LocalRegistry
 using RegistryTools: RegistryTools, gitcmd, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
                      find_registered_version, Project
-using RegistryInstances: RegistryInstance
+using RegistryInstances: RegistryInstance, reachable_registries
 using UUIDs: uuid4
 import Pkg
 import TOML
@@ -434,7 +434,7 @@ end
 
 function find_registry_path(registry::AbstractString)
     # 1. Does `registry` match the name of one of the installed registries?
-    all_registries = collect_registries()
+    all_registries = reachable_registries()
     matching_registries = filter(r -> r.name == registry, all_registries)
     if !isempty(matching_registries)
         return first(matching_registries).path
@@ -451,7 +451,7 @@ function find_registry_path(registry::AbstractString)
 end
 
 function find_registry_path(::Nothing, pkg::Project)
-    all_registries = collect_registries()
+    all_registries = reachable_registries()
     all_registries_but_general = filter(r -> r.name != "General",
                                         all_registries)
 
@@ -511,36 +511,6 @@ function check_git_registry(registry_path_or_url, gitconfig)
         error("Failed to make a temporary git clone of $url")
     end
     return path, true
-end
-
-# This replaces the use of `Pkg.Types.collect_registries`, which was
-# removed in Julia 1.7.
-#
-# TODO: Once Julia versions before 1.7 are no longer supported,
-# consider switching over to use `Pkg.Registry.reachable_registries`
-# where this is called.
-function collect_registries()
-    registries = []
-    for depot in Pkg.depots()
-        isdir(depot) || continue
-        reg_dir = joinpath(depot, "registries")
-        isdir(reg_dir) || continue
-        for name in readdir(reg_dir)
-            file = joinpath(reg_dir, name, "Registry.toml")
-            if isfile(file)
-                push!(registries, (name = name, path = joinpath(reg_dir, name)))
-            else
-                # Packed registry in Julia 1.7+.
-                file = joinpath(reg_dir, "$(name).toml")
-                if isfile(file)
-                    push!(registries,
-                          (name = name, path = joinpath(reg_dir,
-                                                        "$(name).toml")))
-                end
-            end
-        end
-    end
-    return registries
 end
 
 function has_package(registry_path, pkg::Project)
