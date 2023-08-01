@@ -17,7 +17,6 @@ using RegistryTools: RegistryTools, gitcmd, Compress,
                      find_registered_version, Project
 using RegistryInstances: RegistryInstance, reachable_registries
 using UUIDs: uuid4
-import Pkg
 import TOML
 
 export create_registry, register
