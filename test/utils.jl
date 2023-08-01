@@ -2,6 +2,7 @@
 
 using LocalRegistry: gitcmd
 using RegistryTools: Compress
+using RegistryInstances: RegistryInstance
 import Pkg
 import TOML
 
@@ -122,10 +123,7 @@ end
 function sanity_check_registry(path)
     registry = TOML.parsefile(joinpath(path, "Registry.toml"))
     if VERSION >= v"1.7-"
-        # TODO: Check if the `parse_packages` keyword is available
-        # when the final Julia 1.7 has been released and if so set it
-        # explicitly to true.
-        registry = Pkg.Registry.RegistryInstance(path)  # , parse_packages = true)
+        registry = RegistryInstance(path)
         return true
     end
 
