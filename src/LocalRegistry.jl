@@ -393,7 +393,10 @@ function find_package_path(package_name::AbstractString)
     end
 
     manifest = get_current_manifest()
-    if VersionNumber(get(manifest, "manifest_format", "1")) > v"2.0"
+    manifest_format = VersionNumber(get(manifest, "manifest_format", "1"))
+    if manifest_format == v"1"
+        manifest = Dict("deps" => manifest)
+    elseif manifest_format > v"2.0"
         @warn("Unsupported manifest format, trying anyway.")
     end
     deps = manifest["deps"]
