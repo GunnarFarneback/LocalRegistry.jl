@@ -1,7 +1,7 @@
 name = "LocalRegistry"
 uuid = "89398ba2-070a-4b16-a995-9893c55d93cf"
 authors = ["Gunnar Farnebäck <gunnar@lysator.liu.se>"]
-version = "0.5.4"
+version = "0.5.5"
 
 [deps]
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"

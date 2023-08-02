@@ -208,7 +208,6 @@ function do_register(package, registry;
         error("$(package) is not a valid package (no src/$(pkg_filename))")
     end
 
-
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
     if is_dirty(package_path, gitconfig)
@@ -458,8 +457,7 @@ function find_registry_path(::Nothing, pkg::Project)
                                         all_registries)
 
     matching_registries = filter(all_registries) do reg_spec
-        reg_data = TOML.parsefile(joinpath(reg_spec.path, "Registry.toml"))
-        haskey(reg_data["packages"], string(pkg.uuid))
+        haskey(reg_spec.pkgs, pkg.uuid)
     end
 
     if isempty(matching_registries)
