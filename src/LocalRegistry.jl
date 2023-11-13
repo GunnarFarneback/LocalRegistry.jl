@@ -12,7 +12,7 @@ Registration of new and updated packages is done by the function `register`.
 """
 module LocalRegistry
 
-using RegistryTools: RegistryTools, gitcmd, Compress,
+using RegistryTools: RegistryTools, Compress,
                      check_and_update_registry_files, ReturnStatus, haserror,
                      find_registered_version, Project
 using RegistryInstances: RegistryInstance, reachable_registries
@@ -605,6 +605,21 @@ function gitlab(branch, pkg, new_package, repo, commit)
     push!(push_options, "-o", "merge_request.remove_source_branch")
 
     return branch, push_options
+end
+
+function gitcmd(path::AbstractString, gitconfig::Dict)
+    if Sys.iswindows()
+        # Workaround for https://github.com/GunnarFarneback/LocalRegistry.jl/issues/76.
+        # Cf. https://github.com/ziglang/zig/issues/16526#issuecomment-1648706259
+        cmd = ["cmd", "/c", "git", "-C", path]
+    else
+        cmd = ["git", "-C", path]
+    end
+    for (n,v) in gitconfig
+        push!(cmd, "-c")
+        push!(cmd, "$n=$v")
+    end
+    Cmd(cmd)
 end
 
 end
