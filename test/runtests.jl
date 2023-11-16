@@ -52,3 +52,7 @@ end
 @testset "Check git registry" begin
     include("check_git_registry.jl")
 end
+
+@testset "gitcmd" begin
+    include("gitcmd.jl")
+end

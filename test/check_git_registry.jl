@@ -8,7 +8,7 @@ with_testdir() do testdir
                     gitconfig = TEST_GITCONFIG, push = false)
 
     reg_path, reg_git, is_temp = check_git_registry(registry_dir,
-                                                    TEST_GITCONFIG)
+                                                    TEST_GITCONFIG, nothing)
     @test reg_path == registry_dir
     @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test !is_temp
@@ -18,7 +18,7 @@ with_testdir() do testdir
     run(`$(upstream_git) clone -q --bare $(registry_dir) .`)
 
     reg_path, reg_git, is_temp = check_git_registry(upstream_url,
-                                                    TEST_GITCONFIG)
+                                                    TEST_GITCONFIG, nothing)
     @test isdir(joinpath(reg_path, ".git"))
     @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test is_temp
@@ -30,7 +30,7 @@ with_testdir() do testdir
     write(joinpath(registry_dir, ".tree_info.toml"),
           "git-tree-sha1 = \"$(tree_hash)\"")
     reg_path, reg_git, is_temp = check_git_registry(registry_dir,
-                                                    TEST_GITCONFIG)
+                                                    TEST_GITCONFIG, nothing)
     @test isdir(joinpath(reg_path, ".git"))
     @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test is_temp
@@ -46,7 +46,7 @@ with_testdir() do testdir
              path = "TestRegistry.tar.gz"
           """)
     reg_path, reg_git, is_temp = check_git_registry(registry_toml,
-                                                    TEST_GITCONFIG)
+                                                    TEST_GITCONFIG, nothing)
     @test isdir(joinpath(reg_path, ".git"))
     @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test is_temp
