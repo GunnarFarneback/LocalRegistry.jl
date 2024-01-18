@@ -82,10 +82,8 @@ function create_registry(name_or_path, repo; description = nothing,
         catch
         end
         # We do not want to clobber existing registries
-        if ispath(joinpath(path, "Registry.toml"))
-            @warn("$repo already contains a registry, this registry was added, no new registry was created")
-            # TODO: Handle the case when `name_or_path` does not match the name in Registry.toml
-            return path
+        if ispath(joinpath(path, "Registry.toml")) && isnothing(branch)
+            error("$repo already contains a registry")
         end
     end
 

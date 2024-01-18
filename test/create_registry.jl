@@ -28,6 +28,12 @@ with_testdir() do testdir
     create_registry(downstream_dir, "file://$(upstream_dir)", push = true,
                     gitconfig = TEST_GITCONFIG)
     @test readchomp(`$upstream_git branch --show-current`) == "some_unusual_branch_name"
+
+    # Test that `create_registry` errors rather than overwriting an existing registry
+    run(`rm -rf $(downstream_dir)`)
+    @test_throws ErrorException("file://$(upstream_dir) already contains a registry") (
+                    create_registry(downstream_dir, "file://$(upstream_dir)",
+                                    push = true, gitconfig = TEST_GITCONFIG))
 end
 
 # Test explicit branch name.
@@ -41,4 +47,11 @@ with_testdir() do testdir
                     branch = "my_favorite_branch_name",
                     gitconfig = TEST_GITCONFIG)
     @test strip(read(`$upstream_git branch`, String)) == "my_favorite_branch_name"
+
+    # Test that `create_registry` errors rather than overwriting an existing registry
+    run(`rm -rf $(downstream_dir)`)
+    @test_throws ProcessFailedException (
+                    create_registry(downstream_dir, "file://$(upstream_dir)",
+                                    branch = "my_favorite_branch_name",
+                                    push = true, gitconfig = TEST_GITCONFIG))
 end
