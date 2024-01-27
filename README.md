@@ -38,17 +38,25 @@ pkg"add LocalRegistry"
 
 ## Create Registry
 
+Before `LocalRegistry` can create a registry, you need to have a `git`
+repository in which `LocalRegistry` will create the new registry. You must
+be able to push to this repository, so typically it is created either by
+using `git init --bare` or by creating it on a service such as *GitHub*.
+No content is required in this repository, in fact certain content may
+cause future problems.
+
+The Julia code for creating a registry can be:
 ```
 using LocalRegistry
 create_registry(name, repository_url, description = "My private registry")
 ```
 This prepares a registry with the given name in the standard
-location for registries. Review the result and `git push` it
+location for registries (the default location is
+`~/.julia/registries/`). Review the result and `git push` it
 manually. When created in this way the registry is automatically
 activated and the next section can be skipped.
 
-The repository at `repository_url` must be able to be pushed to,
-for example by being a bare repository. `repository_url` itself
+`repository_url` refers to the git repository mentioned above and
 can be an URL, or a path to a local git repository.
 
 The registry can also be created at a specified path, with a specified

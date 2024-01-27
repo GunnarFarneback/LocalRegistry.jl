@@ -45,7 +45,8 @@ for example by being a bare repository.
 * `push`: If `false`, the registry will only be prepared locally.
   Review the result and `git push` it manually. If `true`, the upstream
   repository is first cloned (if possible) before creating the registry.
-* `branch`: Create the registry in the specified branch. Default is to
+* `branch`: Create the registry in the specified branch (the branch must
+  not exist). Default is to
   use the upstream branch if `push` is `true` and otherwise the default
   branch name configured for `git init`.
 * `gitconfig`: Optional configuration parameters for the `git` command.
@@ -80,6 +81,10 @@ function create_registry(name_or_path, repo; description = nothing,
             run(`$git clone -q $repo .`)
             git_repo_cloned = true
         catch
+        end
+        # We do not want to clobber existing registries
+        if ispath(joinpath(path, "Registry.toml")) && isnothing(branch)
+            error("$repo already contains a registry")
         end
     end
 
