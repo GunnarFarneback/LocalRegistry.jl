@@ -133,3 +133,4 @@ will look for a package in the current directory.
 * [Migrating Packages from the General Registry](docs/migration_from_general.md)
 * [Using LocalRegistry on a Shared Filesysem](docs/shared_filesystem.md)
 * [Delete a Registered Package](docs/delete_package.md)
+* [Registry Consistency Testing](docs/registry_ci.md)
