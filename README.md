@@ -33,98 +33,51 @@ you are good to go.
 
 ```
 using Pkg
-pkg"add LocalRegistry"
+Pkg.add("LocalRegistry")
 ```
 
 ## Create Registry
 
-Before `LocalRegistry` can create a registry, you need to have a `git`
-repository in which `LocalRegistry` will create the new registry. You must
-be able to push to this repository, so typically it is created either by
-using `git init --bare` or by creating it on a service such as *GitHub*.
-No content is required in this repository, in fact certain content may
-cause future problems.
-
-The Julia code for creating a registry can be:
+The recommended way to create a registry is
 ```
 using LocalRegistry
-create_registry(name, repository_url, description = "My private registry")
+create_registry(name, repository_url; description = "My private registry", push = true)
 ```
-This prepares a registry with the given name in the standard
-location for registries (the default location is
-`~/.julia/registries/`). Review the result and `git push` it
-manually. When created in this way the registry is automatically
-activated and the next section can be skipped.
+where `name` is the name of your registry and `repository_url` points
+to an *empty* upstream repository where you will host your registry.
 
-`repository_url` refers to the git repository mentioned above and
-can be an URL, or a path to a local git repository.
-
-The registry can also be created at a specified path, with a specified
-branch, or being automatically pushed. See the documentation string
-for details.
+There are a number of options to customize this. Read more about that
+and further explanations in the [detailed
+instructions](docs/create_registry.md).
 
 ## Add Registry
 
 To activate the registry, do
 ```
 using Pkg
-pkg"registry add <repository url>"
+Pkg.Registry.add(repository_url)
 ```
 This only needs to be done once per Julia installation.
 [Troubleshooting advice](docs/troubleshooting_general.md) if you
 cannot find packages from the General registry.
 
-## Register a Package
+## Register a Package or a New Version of a Package
 
-```
-using LocalRegistry
-register(package; registry = registry)
-```
-
-Register the new `package` in the registry `registry`. The version
-number and other information is obtained from the package's
-`Project.toml`. The easiest way to specify `package` and `registry` is
-by name as strings. See the documentation string for more options.
-
-Notes:
-* You need to have a clean working copy of your registry.
-* The package must be stored as a git working copy, e.g. having been
-  cloned with `Pkg.develop`.
-* The package must be available in the current `Pkg` environment.
-* The package must have a `Project.toml` or `JuliaProject.toml` file.
-* There is no checking that the dependencies are available in any
-  registry.
-* If you have exactly one installed registry beside the `General`
-  registry, it is not necessary to specify `registry`.
-* By default the registry changes are `git push`ed to the upstream
-  registry repository.
-
-## Register a New Version of a Package
-
-```
-using LocalRegistry
-register(package)
-```
-
-When adding a new version of a package, the registry can be
-omitted. The new version number is obtained from the `version` field
-of the package's `Project.toml` file.
-
-## Simplified Registration of Active Package or Current Directory
-
-If you start Julia with the `--project` flag or use `Pkg.activate` to
-activate a developed package, this package can be registered simply by
+The recommended way to register a package or a new version of a
+package is simply:
 
 ```
 using LocalRegistry
 register()
 ```
 
-This is also sufficient for registering a new package, provided that
-you have exactly one installed registry beside the `General` registry.
+For this to work you need to either have the package in your current
+directory or have the package activated.
 
-If you run `register()` but the active project is not a package, it
-will look for a package in the current directory.
+Actually there are some more requirements but those are usually
+satisfied. Read more about that, a number of options to customize the
+call, and some additional features in the [detailed
+instructions](docs/register.md).
 
 ## Advanced Topics
 

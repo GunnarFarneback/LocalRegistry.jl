@@ -45,6 +45,7 @@ for example by being a bare repository.
 * `push`: If `false`, the registry will only be prepared locally.
   Review the result and `git push` it manually. If `true`, the upstream
   repository is first cloned (if possible) before creating the registry.
+  Defaults to `false` but may be changed to `true` in the future.
 * `branch`: Create the registry in the specified branch (the branch must
   not exist). Default is to
   use the upstream branch if `push` is `true` and otherwise the default
@@ -171,7 +172,7 @@ will be used to perform the registration. In this case `push` must be
 * `push`: If `true`, push the changes to the registry repository automatically. Ignored if `commit` is false.
 * `branch`: Branch name to use for the registration.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
-* `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message.
+* `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message. Defaults to `false` but may be changed to `true` in the future.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 * `create_gitlab_mr`: If `true` sends git push options to create a GitLab merge request. Requires `commit` and `push` to be true.
 """
