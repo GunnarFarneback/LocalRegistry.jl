@@ -55,7 +55,7 @@ instructions](docs/create_registry.md).
 To activate the registry, do
 ```
 using Pkg
-Pkg.Registry.add(repository_url)
+pkg"registry add <repository url>"
 ```
 This only needs to be done once per Julia installation.
 [Troubleshooting advice](docs/troubleshooting_general.md) if you
