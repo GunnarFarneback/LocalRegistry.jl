@@ -43,8 +43,9 @@ The recommended way to create a registry is
 using LocalRegistry
 create_registry(name, repository_url; description = "My private registry", push = true)
 ```
-where `name` is the name of your registry and `repository_url` points
-to an *empty* upstream repository where you will host your registry.
+where `name` is the name of your registry as a `String` and
+`repository_url` (also a `String`) points to an *empty* upstream
+repository where you will host your registry.
 
 There are a number of options to customize this. Read more about that
 and further explanations in the [detailed
@@ -55,7 +56,7 @@ instructions](docs/create_registry.md).
 To activate the registry, do
 ```
 using Pkg
-Pkg.Registry.add(repository_url)
+Registry.add(RegistrySpec(url=repository_url))
 ```
 This only needs to be done once per Julia installation.
 [Troubleshooting advice](docs/troubleshooting_general.md) if you
