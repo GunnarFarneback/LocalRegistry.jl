@@ -3,7 +3,7 @@
 The full set of arguments to `create_registry` is
 ```
 create_registry(name_or_path, repository_url;
-                description, push, branch, git_config)
+                description, push, branch, gitconfig, custom_git)
 ```
 
 ## Positional Arguments
@@ -76,8 +76,15 @@ What branch to use for the registry in the repository. Defaults to
 
 * Otherwise the default branch for the local `git` is used.
 
-`git_config::Dict{<:AbstractString, <:AbstractString}`:
+`gitconfig::Dict{<:AbstractString, <:AbstractString}`:
 
 Optional configuration parameters for the `git` command. For
 interactive use you most likely do not need this. Defaults to
 an empty dictionary, i.e. no configuration.
+
+`custom_git::Union{Nothing, AbstractString, Cmd}`:
+
+By default LocalRegistry uses an external `git` command, unless the
+`Git` package has been loaded, in which case a bundled `git` is used.
+This keyword argument can be used for [further
+customization](custom_git.md).

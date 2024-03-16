@@ -103,7 +103,7 @@ with_empty_registry() do registry_dir, packages_dir
     # registered repo is not changed.
     prepare_package(packages_dir, "Flux32.toml")
     package_dir = joinpath(packages_dir, "Flux")
-    git = gitcmd(package_dir, TEST_GITCONFIG)
+    git = gitcmd(package_dir, gitconfig = TEST_GITCONFIG)
     package_file = joinpath(registry_dir, "F", "Flux", "Package.toml")
     old_repo = TOML.parsefile(package_file)["repo"]
     new_repo = "https://example.com/Julia/Flux.jl.git"
@@ -188,12 +188,12 @@ end
 with_testdir() do testdir
     upstream_dir = joinpath(testdir, "upstream")
     mkpath(upstream_dir)
-    upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
+    upstream_git = gitcmd(upstream_dir, gitconfig = TEST_GITCONFIG)
     run(`$(upstream_git) init --bare`)
     registry_push_dir = joinpath(testdir, "TestRegistryPush")
     create_registry(registry_push_dir, "file://$(upstream_dir)", push = true,
                     gitconfig = TEST_GITCONFIG)
-    downstream_git = gitcmd(registry_push_dir, TEST_GITCONFIG)
+    downstream_git = gitcmd(registry_push_dir, gitconfig = TEST_GITCONFIG)
     packages_dir = joinpath(testdir, "packages")
     prepare_package(packages_dir, "FirstTest1.toml")
     register(joinpath(packages_dir, "FirstTest"), registry = registry_push_dir,
@@ -207,7 +207,7 @@ with_testdir() do testdir
     #   temporary clone.
     upstream2_dir = joinpath(testdir, "upstream2")
     mkpath(upstream2_dir)
-    upstream2_git = gitcmd(upstream2_dir, TEST_GITCONFIG)
+    upstream2_git = gitcmd(upstream2_dir, gitconfig = TEST_GITCONFIG)
     run(`$(upstream2_git) clone --bare file://$(upstream_dir) .`)
     prepare_package(packages_dir, "Flux1.toml")
     register(joinpath(packages_dir, "Flux"), registry = registry_push_dir,
@@ -248,7 +248,7 @@ with_testdir() do testdir
     withenv("GITLAB_USER_LOGIN" => "john.doe") do
         upstream_dir = joinpath(testdir, "upstream")
         mkpath(upstream_dir)
-        upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
+        upstream_git = gitcmd(upstream_dir, gitconfig = TEST_GITCONFIG)
         run(`$(upstream_git) init --bare`)
 
         registry_test_dir = joinpath(testdir, "TestGitlabMR")
@@ -279,7 +279,8 @@ with_testdir() do testdir
         register(joinpath(packages_dir, "FirstTest"), registry = registry_test_dir,
                  push = true, create_gitlab_mr = true, gitconfig = TEST_GITCONFIG)
 
-        package_git = gitcmd(joinpath(packages_dir, "FirstTest"), TEST_GITCONFIG)
+        package_git = gitcmd(joinpath(packages_dir, "FirstTest"),
+                             gitconfig = TEST_GITCONFIG)
         commit_hash = readchomp(`$(package_git) rev-parse HEAD`)
         expected_push_options =
             """
