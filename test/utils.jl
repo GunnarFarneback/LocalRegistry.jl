@@ -28,7 +28,7 @@ function prepare_package(packages_dir, project_file, subdir = "";
     if !isempty(subdir)
         write(joinpath(top_dir, "README.md"), "# Top Level README")
     end
-    git = gitcmd(top_dir, TEST_GITCONFIG)
+    git = gitcmd(top_dir, gitconfig = TEST_GITCONFIG)
     if !isdir(joinpath(top_dir, ".git"))
         run(`$(git) init -q`)
         run(`$git remote add origin $repo`)

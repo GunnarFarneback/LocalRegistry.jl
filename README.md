@@ -19,6 +19,19 @@ companion package
 This package requires Julia 1.6 or later. Older versions of the
 package work back to Julia 1.1.
 
+## Prerequisites
+
+You need to have command line `git` installed and available in the
+system `PATH`. If
+```
+run(`git --version`)
+```
+in the Julia REPL prints a version number rather than giving an error,
+you are good to go.
+
+There is also an option of using a bundled `git`. See [custom
+git](docs/custom_git.md) for details.
+
 ## Installation
 
 ```

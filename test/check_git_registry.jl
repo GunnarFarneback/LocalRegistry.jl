@@ -14,7 +14,7 @@ with_testdir() do testdir
     @test !is_temp
 
     mkpath(upstream_dir)
-    upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
+    upstream_git = gitcmd(upstream_dir, gitconfig = TEST_GITCONFIG)
     run(`$(upstream_git) clone -q --bare $(registry_dir) .`)
 
     reg_path, reg_git, is_temp = check_git_registry(upstream_url,
@@ -24,7 +24,7 @@ with_testdir() do testdir
     @test is_temp
 
     # Emulate a registry downloaded from a package server.
-    downstream_git = gitcmd(registry_dir, TEST_GITCONFIG)
+    downstream_git = gitcmd(registry_dir, gitconfig = TEST_GITCONFIG)
     tree_hash = readchomp(`$(downstream_git) rev-parse HEAD:`)
     rm(joinpath(registry_dir, ".git"), recursive = true)
     write(joinpath(registry_dir, ".tree_info.toml"),

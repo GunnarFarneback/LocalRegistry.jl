@@ -3,8 +3,8 @@
 
 Create and maintain local registries for Julia packages. This package
 is intended to provide a simple but manual workflow for maintaining
-small local registries (private or public) without making any
-assumptions about how the registry or the packages are hosted.
+local registries (private or public) without making any assumptions
+about how the registry or the packages are hosted.
 
 Registry creation is done by the function `create_registry`.
 
@@ -18,7 +18,6 @@ using RegistryTools: RegistryTools, Compress,
 using RegistryInstances: RegistryInstance, reachable_registries
 using UUIDs: uuid4
 import TOML
-import Git
 
 export create_registry, register
 
@@ -41,7 +40,7 @@ for example by being a bare repository.
 
     create_registry(...; description = nothing, push = false,
                     branch = nothing, gitconfig = Dict(),
-                    external_git = nothing)
+                    custom_git = nothing)
 
 * `description`: Optional description of the purpose of the registry.
 * `push`: If `false`, the registry will only be prepared locally.
@@ -53,11 +52,12 @@ for example by being a bare repository.
   use the upstream branch if `push` is `true` and otherwise the default
   branch name configured for `git init`.
 * `gitconfig`: Optional configuration parameters for the `git` command.
-* `external_git`: Command or path for an external git. Defaults to nothing,
-  using the Git Package.
+* `custom_git`: Command or path for a custom git command. Defaults to
+  nothing, which uses a bundled git if the Git Package has been loaded
+  and otherwise calls out to an external git.
 """
 function create_registry(name_or_path, repo; description = nothing,
-                         gitconfig::Dict = Dict(), external_git = nothing,
+                         gitconfig::Dict = Dict(), custom_git = nothing,
                          uuid = nothing, push = false, branch = nothing)
     if length(splitpath(name_or_path)) > 1
         path = abspath(expanduser(name_or_path))
@@ -75,7 +75,7 @@ function create_registry(name_or_path, repo; description = nothing,
     end
     mkpath(path)
 
-    git = gitcmd(path, gitconfig, external_git)
+    git = gitcmd(path; custom_git, gitconfig)
     git_repo_cloned = false
 
     if push
@@ -169,7 +169,7 @@ will be used to perform the registration. In this case `push` must be
 
     register(package; registry = nothing, commit = true, push = true,
              branch = nothing, repo = nothing, ignore_reregistration = false,
-             gitconfig = Dict(), external_git = nothing,
+             gitconfig = Dict(), custom_git = nothing,
              create_gitlab_mr = false)
 
 * `registry`: Name, path, or URL of registry.
@@ -179,7 +179,9 @@ will be used to perform the registration. In this case `push` must be
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message. Defaults to `false` but may be changed to `true` in the future.
 * `gitconfig`: Optional configuration parameters for the `git` command.
-* `external_git`: Command or path for an external git. Defaults to nothing, using the Git package.
+* `custom_git`: Command or path for a custom git command. Defaults to
+  nothing, which uses a bundled git if the Git Package has been loaded
+  and otherwise calls out to an external git.
 * `create_gitlab_mr`: If `true` sends git push options to create a GitLab merge request. Requires `commit` and `push` to be true.
 """
 function register(package::Union{Nothing, Module, AbstractString} = nothing;
@@ -195,7 +197,7 @@ end
 function do_register(package, registry;
                      commit = true, push = true, branch = nothing,
                      repo = nothing, ignore_reregistration = false,
-                     gitconfig::Dict = Dict(), external_git = nothing,
+                     gitconfig::Dict = Dict(), custom_git = nothing,
                      create_gitlab_mr = false)
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
@@ -223,14 +225,14 @@ function do_register(package, registry;
 
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
-    package_git = gitcmd(package_path, gitconfig, external_git)
+    package_git = gitcmd(package_path; custom_git, gitconfig)
     if is_dirty(package_git)
         error("Package directory is dirty. Stash or commit files.")
     end
 
     registry_path_or_url = find_registry_path(registry, pkg)
     registry_path, registry_git, is_temporary =
-        check_git_registry(registry_path_or_url, gitconfig, external_git)
+        check_git_registry(registry_path_or_url, gitconfig, custom_git)
     if is_temporary && (!commit || !push)
         error("Need to use a temporary git clone of the registry, but commit or push is set to false.")
     end
@@ -496,7 +498,7 @@ end
 #
 # Either way, LocalRegistry must have a git clone to work with, so if
 # the registry is not in that form, make a temporary git clone.
-function check_git_registry(registry_path_or_url, gitconfig, external_git)
+function check_git_registry(registry_path_or_url, gitconfig, custom_git)
     temporary_repo = true
     if !ispath(registry_path_or_url)
         # URL given. Use this to make a git clone.
@@ -523,7 +525,7 @@ function check_git_registry(registry_path_or_url, gitconfig, external_git)
         path = registry_path_or_url
     end
 
-    git = gitcmd(path, gitconfig, external_git)
+    git = gitcmd(path; custom_git, gitconfig)
 
     if temporary_repo
         try
@@ -629,17 +631,21 @@ function gitlab(branch, pkg, new_package, repo, commit)
     return branch, push_options
 end
 
-function gitcmd(path::AbstractString, gitconfig::Dict, external_git = nothing)
-    args = ["-C", path]
+function gitcmd(path::AbstractString = ""; custom_git = nothing,
+                gitconfig::Dict = Dict{String, String}())
+    args = String[]
+    isempty(path) || push!(args, "-C", path)
     for (k, v) in gitconfig
-        push!(args, "-c")
-        push!(args, "$k=$v")
+        push!(args, "-c", "$k=$v")
     end
-    git = _gitcmd(external_git)
+    git = _gitcmd(custom_git)
     return `$git $args`
 end
 
-_gitcmd(::Nothing) = Git.git()
+# A specialized method `_gitcmd(::Nothing, ::Val{:git})` is defined
+# by the Git package extension.
+_gitcmd(::Nothing) = _gitcmd(nothing, Val(:git))
+_gitcmd(::Nothing, ::Any) = `git`
 _gitcmd(path::AbstractString) = `$path`
 _gitcmd(cmd::Cmd) = cmd
 
