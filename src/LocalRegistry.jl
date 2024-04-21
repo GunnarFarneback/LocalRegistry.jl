@@ -3,8 +3,8 @@
 
 Create and maintain local registries for Julia packages. This package
 is intended to provide a simple but manual workflow for maintaining
-small local registries (private or public) without making any
-assumptions about how the registry or the packages are hosted.
+local registries (private or public) without making any assumptions
+about how the registry or the packages are hosted.
 
 Registry creation is done by the function `create_registry`.
 
@@ -39,7 +39,8 @@ for example by being a bare repository.
 *Keyword arguments*
 
     create_registry(...; description = nothing, push = false,
-                    branch = nothing, gitconfig = Dict())
+                    branch = nothing, gitconfig = Dict(),
+                    custom_git = nothing)
 
 * `description`: Optional description of the purpose of the registry.
 * `push`: If `false`, the registry will only be prepared locally.
@@ -51,10 +52,13 @@ for example by being a bare repository.
   use the upstream branch if `push` is `true` and otherwise the default
   branch name configured for `git init`.
 * `gitconfig`: Optional configuration parameters for the `git` command.
+* `custom_git`: Command or path for a custom git command. Defaults to
+  nothing, which uses a bundled git if the Git Package has been loaded
+  and otherwise calls out to an external git.
 """
 function create_registry(name_or_path, repo; description = nothing,
-                         gitconfig::Dict = Dict(), uuid = nothing,
-                         push = false, branch = nothing)
+                         gitconfig::Dict = Dict(), custom_git = nothing,
+                         uuid = nothing, push = false, branch = nothing)
     if length(splitpath(name_or_path)) > 1
         path = abspath(expanduser(name_or_path))
     else
@@ -71,7 +75,7 @@ function create_registry(name_or_path, repo; description = nothing,
     end
     mkpath(path)
 
-    git = gitcmd(path, gitconfig)
+    git = gitcmd(path; custom_git, gitconfig)
     git_repo_cloned = false
 
     if push
@@ -165,7 +169,8 @@ will be used to perform the registration. In this case `push` must be
 
     register(package; registry = nothing, commit = true, push = true,
              branch = nothing, repo = nothing, ignore_reregistration = false,
-             gitconfig = Dict(), create_gitlab_mr = false)
+             gitconfig = Dict(), custom_git = nothing,
+             create_gitlab_mr = false)
 
 * `registry`: Name, path, or URL of registry.
 * `commit`: If `false`, only make the changes to the registry but do not commit. Additionally the registry is allowed to be dirty in the `false` case.
@@ -174,6 +179,9 @@ will be used to perform the registration. In this case `push` must be
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message. Defaults to `false` but may be changed to `true` in the future.
 * `gitconfig`: Optional configuration parameters for the `git` command.
+* `custom_git`: Command or path for a custom git command. Defaults to
+  nothing, which uses a bundled git if the Git Package has been loaded
+  and otherwise calls out to an external git.
 * `create_gitlab_mr`: If `true` sends git push options to create a GitLab merge request. Requires `commit` and `push` to be true.
 """
 function register(package::Union{Nothing, Module, AbstractString} = nothing;
@@ -189,7 +197,8 @@ end
 function do_register(package, registry;
                      commit = true, push = true, branch = nothing,
                      repo = nothing, ignore_reregistration = false,
-                     gitconfig::Dict = Dict(), create_gitlab_mr = false)
+                     gitconfig::Dict = Dict(), custom_git = nothing,
+                     create_gitlab_mr = false)
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
     package_path = find_package_path(package)
@@ -216,16 +225,18 @@ function do_register(package, registry;
 
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
-    if is_dirty(package_path, gitconfig)
+    package_git = gitcmd(package_path; custom_git, gitconfig)
+    if is_dirty(package_git)
         error("Package directory is dirty. Stash or commit files.")
     end
 
-    registry_path = find_registry_path(registry, pkg)
-    registry_path, is_temporary = check_git_registry(registry_path, gitconfig)
+    registry_path_or_url = find_registry_path(registry, pkg)
+    registry_path, registry_git, is_temporary =
+        check_git_registry(registry_path_or_url, gitconfig, custom_git)
     if is_temporary && (!commit || !push)
         error("Need to use a temporary git clone of the registry, but commit or push is set to false.")
     end
-    if is_dirty(registry_path, gitconfig)
+    if is_dirty(registry_git)
         if commit
             error("Registry directory is dirty. Stash or commit files.")
         else
@@ -237,7 +248,7 @@ function do_register(package, registry;
     # location within the git repository. For normal packages living
     # at the top level of the repository, `subdir` will be the empty
     # string. Also obtain the commit hash for later use.
-    tree_hash, subdir, commit_hash = get_tree_hash(package_path, gitconfig)
+    tree_hash, subdir, commit_hash = get_tree_hash(package_git)
 
     # Check if this version has already been registered. Note, if it
     # was already registered and the contents has changed and
@@ -260,7 +271,7 @@ function do_register(package, registry;
     # not be updated.
     if isnothing(repo)
         if new_package
-            package_repo = get_remote_repo(package_path, gitconfig)
+            package_repo = get_remote_repo(package_git)
         else
             package_repo = ""
         end
@@ -281,48 +292,49 @@ function do_register(package, registry;
                                       commit_hash)
     end
 
-    git = gitcmd(registry_path, gitconfig)
-    HEAD = readchomp(`$git rev-parse --verify HEAD`)
-    saved_branch = readchomp(`$git rev-parse --abbrev-ref HEAD`)
-    remote = readchomp(`$git remote`)
-    status = ReturnStatus()
-    try
-        check_and_update_registry_files(pkg, package_repo, tree_hash,
-                                        registry_path, String[], status,
-                                        subdir = subdir)
-        if !haserror(status)
-            if commit
-                if !isnothing(branch)
-                    run(`$git checkout -b $branch`)
-                    clean_branch = true
-                end
-                commit_registry(pkg, new_package,
-                                package_repo, tree_hash, git)
-                if push
-                    if isnothing(branch)
-                        run(`$git push`)
-                    else
-                        run(`$git push $(push_options) --set-upstream $remote $branch`)
+    let git = registry_git
+        HEAD = readchomp(`$git rev-parse --verify HEAD`)
+        saved_branch = readchomp(`$git rev-parse --abbrev-ref HEAD`)
+        remote = readchomp(`$git remote`)
+        status = ReturnStatus()
+        try
+            check_and_update_registry_files(pkg, package_repo, tree_hash,
+                                            registry_path, String[], status,
+                                            subdir = subdir)
+            if !haserror(status)
+                if commit
+                    if !isnothing(branch)
+                        run(`$git checkout -b $branch`)
+                        clean_branch = true
                     end
+                    commit_registry(pkg, new_package,
+                                    package_repo, tree_hash, git)
+                    if push
+                        if isnothing(branch)
+                            run(`$git push`)
+                        else
+                            run(`$git push $(push_options) --set-upstream $remote $branch`)
+                        end
+                    end
+                    run(`$git checkout $(saved_branch)`)
                 end
+                clean_registry = false
+            end
+        finally
+            if clean_registry
+                run(`$git reset --hard $(HEAD)`)
+                run(`$git clean -f -d`)
                 run(`$git checkout $(saved_branch)`)
             end
-            clean_registry = false
+            if clean_branch
+                run(`$git branch -d $(branch)`)
+            end
         end
-    finally
-        if clean_registry
-            run(`$git reset --hard $(HEAD)`)
-            run(`$git clean -f -d`)
-            run(`$git checkout $(saved_branch)`)
-        end
-        if clean_branch
-            run(`$git branch -d $(branch)`)
-        end
-    end
 
-    # Registration failed. Explain to the user what happened.
-    if haserror(status)
-        error(explain_registration_error(status))
+        # Registration failed. Explain to the user what happened.
+        if haserror(status)
+            error(explain_registration_error(status))
+        end
     end
 
     return true
@@ -355,8 +367,7 @@ end
 # This does the same thing as `LibGit2.isdirty(LibGit2.GitRepo(path))`
 # but also works when `path` is a subdirectory of a git
 # repository. Only dirt within the subdirectory is considered.
-function is_dirty(path, gitconfig)
-    git = gitcmd(path, gitconfig)
+function is_dirty(git)
     # TODO: There should be no need for the `-u` option but without it
     # a bogus diff is reported in the tests.
     return !isempty(read(`$git diff-index -u HEAD -- .`))
@@ -487,17 +498,17 @@ end
 #
 # Either way, LocalRegistry must have a git clone to work with, so if
 # the registry is not in that form, make a temporary git clone.
-function check_git_registry(registry_path_or_url, gitconfig)
+function check_git_registry(registry_path_or_url, gitconfig, custom_git)
+    temporary_repo = true
     if !ispath(registry_path_or_url)
         # URL given. Use this to make a git clone.
         url = registry_path_or_url
     elseif isdir(joinpath(registry_path_or_url, ".git"))
-        # Path is already a git clone. Nothing left to do.
-        return registry_path_or_url, false
+        # Path is already a git clone.
+        temporary_repo = false
     else
         # Registry is given as a path but is not a git clone. Find the
         # URL of the registry from Registry.toml.
-
         # This handles both packed and unpacked registries.
         try
             url = RegistryInstance(registry_path_or_url).repo
@@ -506,17 +517,26 @@ function check_git_registry(registry_path_or_url, gitconfig)
         end
     end
 
-    # Make a temporary clone of the registry at `url`. This will be
-    # automatically removed when Julia exits.
-    path = mktempdir()
-    git = gitcmd(path, gitconfig)
-    try
-        # Note, the output directory `.` effectively means `path`.
-        run(`$git clone -q $url .`)
-    catch
-        error("Failed to make a temporary git clone of $url")
+    if temporary_repo
+        # Make a temporary clone of the registry at `url`. This will be
+        # automatically removed when Julia exits.
+        path = mktempdir()
+    else
+        path = registry_path_or_url
     end
-    return path, true
+
+    git = gitcmd(path; custom_git, gitconfig)
+
+    if temporary_repo
+        try
+            # Note, the output directory `.` effectively means `path`.
+            run(`$git clone -q $url .`)
+        catch
+            error("Failed to make a temporary git clone of $url")
+        end
+    end
+
+    return path, git, temporary_repo
 end
 
 function has_package(registry_path, pkg::Project)
@@ -524,8 +544,7 @@ function has_package(registry_path, pkg::Project)
     return haskey(registry["packages"], string(pkg.uuid))
 end
 
-function get_tree_hash(package_path, gitconfig)
-    git = gitcmd(package_path, gitconfig)
+function get_tree_hash(git)
     subdir = readchomp(`$git rev-parse --show-prefix`)
     tree_hash = readchomp(`$git rev-parse HEAD:$subdir`)
     commit_hash = readchomp(`$git rev-parse HEAD`)
@@ -536,8 +555,7 @@ function get_tree_hash(package_path, gitconfig)
     return tree_hash, subdir, commit_hash
 end
 
-function get_remote_repo(package_path, gitconfig)
-    git = gitcmd(package_path, gitconfig)
+function get_remote_repo(git)
     remote_names = split(readchomp(`$git remote`), '\n', keepempty=false)
     repos = String[]
     foreach(remote_names) do remote_name
@@ -613,19 +631,22 @@ function gitlab(branch, pkg, new_package, repo, commit)
     return branch, push_options
 end
 
-function gitcmd(path::AbstractString, gitconfig::Dict)
-    if Sys.iswindows()
-        # Workaround for https://github.com/GunnarFarneback/LocalRegistry.jl/issues/76.
-        # Cf. https://github.com/ziglang/zig/issues/16526#issuecomment-1648706259
-        cmd = ["cmd", "/c", "git", "-C", path]
-    else
-        cmd = ["git", "-C", path]
+function gitcmd(path::AbstractString = ""; custom_git = nothing,
+                gitconfig::Dict = Dict{String, String}())
+    args = String[]
+    isempty(path) || push!(args, "-C", path)
+    for (k, v) in gitconfig
+        push!(args, "-c", "$k=$v")
     end
-    for (n,v) in gitconfig
-        push!(cmd, "-c")
-        push!(cmd, "$n=$v")
-    end
-    Cmd(cmd)
+    git = _gitcmd(custom_git)
+    return `$git $args`
 end
+
+# A specialized method `_gitcmd(::Nothing, ::Val{:git})` is defined
+# by the Git package extension.
+_gitcmd(::Nothing) = _gitcmd(nothing, Val(:git))
+_gitcmd(::Nothing, ::Any) = `git`
+_gitcmd(path::AbstractString) = `$path`
+_gitcmd(cmd::Cmd) = cmd
 
 end

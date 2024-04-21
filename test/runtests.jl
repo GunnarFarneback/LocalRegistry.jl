@@ -9,7 +9,14 @@ using CodecZlib
 const TEST_GITCONFIG = Dict(
     "user.name" => "LocalRegistryTests",
     "user.email" => "localregistrytests@example.com",
+    "core.autocrlf" => "input"
 )
+
+# Let one platform run all tests with the Git extension loaded.
+# Package extensions are a new feature in Julia 1.9.
+@static if Sys.iswindows() && VERSION >= v"1.9"
+    import Git
+end
 
 include("utils.jl")
 
@@ -20,6 +27,7 @@ include("utils.jl")
 Pkg.add("AutoHashEquals")
 # Same as `pkg"dev --local Multibreak"` but properly using the API function.
 Pkg.develop("Multibreak", shared = false)
+original_depot = first(DEPOT_PATH)
 empty!(DEPOT_PATH)
 depot_path = mktempdir(@__DIR__)
 push!(DEPOT_PATH, depot_path)
@@ -50,4 +58,12 @@ end
 
 @testset "Check git registry" begin
     include("check_git_registry.jl")
+end
+
+# Package extensions are a new feature in Julia 1.9.
+@static if VERSION >= v"1.9"
+    push!(DEPOT_PATH, original_depot)
+    @testset "gitcmd" begin
+        include("gitcmd.jl")
+    end
 end

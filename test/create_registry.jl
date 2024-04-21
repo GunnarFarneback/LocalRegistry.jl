@@ -4,7 +4,7 @@
 with_testdir() do testdir
     upstream_dir = joinpath(testdir, "upstream_registry")
     mkpath(upstream_dir)
-    upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
+    upstream_git = gitcmd(upstream_dir, gitconfig = TEST_GITCONFIG)
     # With a sufficiently new git (probably 2.28) this test could be
     # done much more easily, basically just
     # run(`$upstream_git init -q --bare --initial_branch=some_unusual_branch_name`)
@@ -16,7 +16,7 @@ with_testdir() do testdir
     write(joinpath(upstream_dir, "HEAD"), "ref: refs/heads/some_unusual_branch_name")
     tmp_downstream_dir = joinpath(testdir, "tmp_downstream")
     mkpath(tmp_downstream_dir)
-    tmp_git = gitcmd(tmp_downstream_dir, TEST_GITCONFIG)
+    tmp_git = gitcmd(tmp_downstream_dir, gitconfig = TEST_GITCONFIG)
     run(`$tmp_git clone file://$(upstream_dir) .`)
     run(`$tmp_git checkout -b some_unusual_branch_name`)
     write(joinpath(tmp_downstream_dir, ".gitignore"), "Manifest.toml")
@@ -40,7 +40,7 @@ end
 with_testdir() do testdir
     upstream_dir = joinpath(testdir, "upstream_registry")
     mkpath(upstream_dir)
-    upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
+    upstream_git = gitcmd(upstream_dir, gitconfig = TEST_GITCONFIG)
     run(`$upstream_git init -q --bare`)
     downstream_dir = joinpath(testdir, "downstream_registry")
     create_registry(downstream_dir, "file://$(upstream_dir)", push = true,

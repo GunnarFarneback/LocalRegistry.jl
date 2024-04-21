@@ -7,26 +7,32 @@ with_testdir() do testdir
                     uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369",
                     gitconfig = TEST_GITCONFIG, push = false)
 
-    reg_path, is_temp = check_git_registry(registry_dir, TEST_GITCONFIG)
+    reg_path, reg_git, is_temp = check_git_registry(registry_dir,
+                                                    TEST_GITCONFIG, nothing)
     @test reg_path == registry_dir
+    @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test !is_temp
 
     mkpath(upstream_dir)
-    upstream_git = gitcmd(upstream_dir, TEST_GITCONFIG)
+    upstream_git = gitcmd(upstream_dir, gitconfig = TEST_GITCONFIG)
     run(`$(upstream_git) clone -q --bare $(registry_dir) .`)
 
-    reg_path, is_temp = check_git_registry(upstream_url, TEST_GITCONFIG)
+    reg_path, reg_git, is_temp = check_git_registry(upstream_url,
+                                                    TEST_GITCONFIG, nothing)
     @test isdir(joinpath(reg_path, ".git"))
+    @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test is_temp
 
     # Emulate a registry downloaded from a package server.
-    downstream_git = gitcmd(registry_dir, TEST_GITCONFIG)
+    downstream_git = gitcmd(registry_dir, gitconfig = TEST_GITCONFIG)
     tree_hash = readchomp(`$(downstream_git) rev-parse HEAD:`)
     rm(joinpath(registry_dir, ".git"), recursive = true)
     write(joinpath(registry_dir, ".tree_info.toml"),
           "git-tree-sha1 = \"$(tree_hash)\"")
-    reg_path, is_temp = check_git_registry(registry_dir, TEST_GITCONFIG)
+    reg_path, reg_git, is_temp = check_git_registry(registry_dir,
+                                                    TEST_GITCONFIG, nothing)
     @test isdir(joinpath(reg_path, ".git"))
+    @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test is_temp
 
     # Emulate a registry downloaded from a package server without unpacking.
@@ -39,7 +45,9 @@ with_testdir() do testdir
              uuid = "ed6ca2f6-392d-11ea-3224-d3daf7fee369"
              path = "TestRegistry.tar.gz"
           """)
-    reg_path, is_temp = check_git_registry(registry_toml, TEST_GITCONFIG)
+    reg_path, reg_git, is_temp = check_git_registry(registry_toml,
+                                                    TEST_GITCONFIG, nothing)
     @test isdir(joinpath(reg_path, ".git"))
+    @test readchomp(`$(reg_git) rev-parse --is-inside-work-tree`) == "true"
     @test is_temp
 end

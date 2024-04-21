@@ -29,6 +29,9 @@ run(`git --version`)
 in the Julia REPL prints a version number rather than giving an error,
 you are good to go.
 
+There is also an option of using a bundled `git`. See [custom
+git](docs/custom_git.md) for details.
+
 ## Installation
 
 ```
@@ -84,6 +87,7 @@ instructions](docs/register.md).
 * [Working with a Private Registry and/or Private Repositories](docs/ssh_keys.md)
 * [Registering a Package in a Subdirectory of a Repository](docs/subdir.md)
 * [Migrating Packages from the General Registry](docs/migration_from_general.md)
-* [Using LocalRegistry on a Shared Filesysem](docs/shared_filesystem.md)
+* [Using LocalRegistry on a Shared Filesystem](docs/shared_filesystem.md)
 * [Delete a Registered Package](docs/delete_package.md)
 * [Registry Consistency Testing](docs/registry_ci.md)
+* [Using a Custom Git](docs/custom_git.md)

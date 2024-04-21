@@ -7,7 +7,7 @@ The full set of arguments to `register` is
 ```
 register(package = nothing;
          registry, commit, push, repo, ignore_reregistration,
-         gitconfig, create_gitlab_mr)
+         gitconfig, custom_git, create_gitlab_mr)
 ```
 
 although in many cases a no-argument `register()` call is sufficient.
@@ -121,7 +121,7 @@ informational message.
 
 **Note: The default will likely be changed to `true` in a future update.**
 
-`git_config::Dict{<:AbstractString, <:AbstractString}`:
+`gitconfig::Dict{<:AbstractString, <:AbstractString}`:
 
 Optional configuration parameters for the `git` command. For
 interactive use you most likely do not need this. Defaults to
@@ -130,9 +130,16 @@ an empty dictionary, i.e. no configuration.
 For CI purposes it can be useful, e.g. as used in the LocalRegistry
 tests:
 ```
-git_config = Dict("user.name" => "LocalRegistryTests",
-                  "user.email" => "localregistrytests@example.com")
+gitconfig = Dict("user.name" => "LocalRegistryTests",
+                 "user.email" => "localregistrytests@example.com")
 ```
+
+`custom_git::Union{Nothing, AbstractString, Cmd}`:
+
+By default LocalRegistry uses an external `git` command, unless the
+`Git` package has been loaded, in which case a bundled `git` is used.
+This keyword argument can be used for [further
+customization](custom_git.md).
 
 `create_gitlab_mr`:
 
