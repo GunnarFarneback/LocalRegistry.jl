@@ -111,10 +111,11 @@ function compare_files(path1, path2)
         file1 = Compress.load(path1)
         file2 = Compress.load(path2)
         if endswith(path1, "Compat.toml")
-            # For unknown reasons, Julia 1.11 has started adding
-            # spaces in the Compat files, e.g. "1.1.0 - 1"
-            # instead of "1.1.0-1". Let's just wipe those spaces
-            # before comparing to the expected results.
+            # Due to https://github.com/JuliaLang/Pkg.jl/pull/3580,
+            # Julia 1.11 has started adding spaces in the Compat
+            # files, e.g. "1.1.0 - 1" instead of "1.1.0-1". Let's just
+            # wipe those spaces before comparing to the expected
+            # results.
             for v in values(file1)
                 for (key, value) in v
                     v[key] = replace(value, " " => "")
