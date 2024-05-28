@@ -164,7 +164,7 @@ will be used to perform the registration. In this case `push` must be
 *Keyword arguments*
 
     register(package; registry = nothing, commit = true, push = true,
-             branch = nothing, repo = nothing, ignore_reregistration = false,
+             branch = nothing, repo = nothing, ignore_reregistration = false, allow_package_dirty = false,
              gitconfig = Dict(), create_gitlab_mr = false)
 
 * `registry`: Name, path, or URL of registry.
@@ -173,6 +173,7 @@ will be used to perform the registration. In this case `push` must be
 * `branch`: Branch name to use for the registration.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message. Defaults to `false` but may be changed to `true` in the future.
+* `allow_package_dirty`: If `true`, do not raise an error if the package directory is dirty, only show an informational message. Defaults to `false`.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 * `create_gitlab_mr`: If `true` sends git push options to create a GitLab merge request. Requires `commit` and `push` to be true.
 """
@@ -187,7 +188,7 @@ end
 # `registry`. Also returns false if there was nothing new to register
 # and true if something new was registered.
 function do_register(package, registry;
-                     allow_dirty=false,
+                     allow_package_dirty=false,
                      commit = true, push = true, branch = nothing,
                      repo = nothing, ignore_reregistration = false,
                      gitconfig::Dict = Dict(), create_gitlab_mr = false)
@@ -218,7 +219,7 @@ function do_register(package, registry;
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
     if is_dirty(package_path, gitconfig)
-        allow_dirty ?
+        allow_package_dirty ?
             error("Package directory is dirty. Stash or commit files.") :
             @info "Note: package directory is dirty."
     end
@@ -229,7 +230,7 @@ function do_register(package, registry;
         error("Need to use a temporary git clone of the registry, but commit or push is set to false.")
     end
     if is_dirty(registry_path, gitconfig)
-        if !allow_dirty && commit
+        if commit
             error("Registry directory is dirty. Stash or commit files.")
         else
             @info("Note: registry directory is dirty.")
