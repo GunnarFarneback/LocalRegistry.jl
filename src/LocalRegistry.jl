@@ -188,9 +188,8 @@ end
 # `registry`. Also returns false if there was nothing new to register
 # and true if something new was registered.
 function do_register(package, registry;
-                     allow_package_dirty=false,
                      commit = true, push = true, branch = nothing,
-                     repo = nothing, ignore_reregistration = false,
+                     repo = nothing, ignore_reregistration = false, allow_package_dirty = false,
                      gitconfig::Dict = Dict(), create_gitlab_mr = false)
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
@@ -219,7 +218,7 @@ function do_register(package, registry;
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
     if is_dirty(package_path, gitconfig)
-        allow_package_dirty ?
+        !allow_package_dirty ?
             error("Package directory is dirty. Stash or commit files.") :
             @info "Note: package directory is dirty."
     end
