@@ -187,6 +187,7 @@ end
 # `registry`. Also returns false if there was nothing new to register
 # and true if something new was registered.
 function do_register(package, registry;
+                     allow_dirty=false,
                      commit = true, push = true, branch = nothing,
                      repo = nothing, ignore_reregistration = false,
                      gitconfig::Dict = Dict(), create_gitlab_mr = false)
@@ -217,7 +218,9 @@ function do_register(package, registry;
     # If the package directory is dirty, a different version could be
     # present in Project.toml.
     if is_dirty(package_path, gitconfig)
-        error("Package directory is dirty. Stash or commit files.")
+        allow_dirty ?
+            error("Package directory is dirty. Stash or commit files.") :
+            @info "Note: package directory is dirty."
     end
 
     registry_path = find_registry_path(registry, pkg)
@@ -226,7 +229,7 @@ function do_register(package, registry;
         error("Need to use a temporary git clone of the registry, but commit or push is set to false.")
     end
     if is_dirty(registry_path, gitconfig)
-        if commit
+        if !allow_dirty && commit
             error("Registry directory is dirty. Stash or commit files.")
         else
             @info("Note: registry directory is dirty.")
