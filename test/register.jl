@@ -161,6 +161,12 @@ with_empty_registry() do registry_dir, packages_dir
                                          registry = registry_dir,
                                          gitconfig = TEST_GITCONFIG,
                                          push = false)
+    register(joinpath(packages_dir, "Flux"),
+             registry = registry_dir,
+             gitconfig = TEST_GITCONFIG,
+             push = false,
+             allow_package_dirty = true)
+    @test isfile(joinpath(registry_dir, "F", "Flux", "Package.toml"))
 end
 
 # Dirty the registry repository and try to register a package.
