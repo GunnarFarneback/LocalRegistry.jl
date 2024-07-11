@@ -164,8 +164,9 @@ will be used to perform the registration. In this case `push` must be
 *Keyword arguments*
 
     register(package; registry = nothing, commit = true, push = true,
-             branch = nothing, repo = nothing, ignore_reregistration = false, allow_package_dirty = false,
-             gitconfig = Dict(), create_gitlab_mr = false)
+             branch = nothing, repo = nothing, ignore_reregistration = false,
+             allow_package_dirty = false, gitconfig = Dict(),
+             create_gitlab_mr = false)
 
 * `registry`: Name, path, or URL of registry.
 * `commit`: If `false`, only make the changes to the registry but do not commit. Additionally the registry is allowed to be dirty in the `false` case.
@@ -173,7 +174,7 @@ will be used to perform the registration. In this case `push` must be
 * `branch`: Branch name to use for the registration.
 * `repo`: Specify the package repository explicitly. Otherwise looked up as the `git remote` of the package the first time it is registered.
 * `ignore_reregistration`: If `true`, do not raise an error if a version has already been registered (with different content), only an informational message. Defaults to `false` but may be changed to `true` in the future.
-* `allow_package_dirty`: If `true`, do not raise an error if the package directory is dirty, only show an informational message. Defaults to `false`.
+* `allow_package_dirty`: If `true`, do not raise an error if the package directory is dirty, unless the Project file itself is dirty. Instead show an informational message. Defaults to `false`.
 * `gitconfig`: Optional configuration parameters for the `git` command.
 * `create_gitlab_mr`: If `true` sends git push options to create a GitLab merge request. Requires `commit` and `push` to be true.
 """
@@ -189,15 +190,18 @@ end
 # and true if something new was registered.
 function do_register(package, registry;
                      commit = true, push = true, branch = nothing,
-                     repo = nothing, ignore_reregistration = false, allow_package_dirty = false,
-                     gitconfig::Dict = Dict(), create_gitlab_mr = false)
+                     repo = nothing, ignore_reregistration = false,
+                     allow_package_dirty = false, gitconfig::Dict = Dict(),
+                     create_gitlab_mr = false)
     # Find and read the `Project.toml` for the package. First look for
     # the alternative `JuliaProject.toml`.
     package_path = find_package_path(package)
     local pkg
+    local project_file_name
     for project_file in Base.project_names
         pkg = Project(joinpath(package_path, project_file))
         if !isnothing(pkg.name)
+            project_file_name = project_file
             break
         end
     end
@@ -215,12 +219,25 @@ function do_register(package, registry;
         error("$(package) is not a valid package (no src/$(pkg_filename))")
     end
 
-    # If the package directory is dirty, a different version could be
-    # present in Project.toml.
+    # If the package directory is dirty, what is committed to git
+    # would be registered rather than what is in the files.
+    #
+    # Especially problematic is if Project.toml is dirty, when it
+    # could be a mismatch between e.g. the version we read from the
+    # file on disk and what gets registered with the committed
+    # file. This gives an error also when allow_package_dirty is
+    # enabled.
     if is_dirty(package_path, gitconfig)
-        !allow_package_dirty ?
-            error("Package directory is dirty. Stash or commit files.") :
+        if allow_package_dirty && !is_dirty(package_path, gitconfig,
+                                            project_file_name)
             @info "Note: package directory is dirty."
+        else
+            if allow_package_dirty
+                error("$(project_file_name) is dirty. Stash or commit it.")
+            else
+                error("Package directory is dirty. Stash or commit files.")
+            end
+        end
     end
 
     registry_path = find_registry_path(registry, pkg)
@@ -358,11 +375,11 @@ end
 # This does the same thing as `LibGit2.isdirty(LibGit2.GitRepo(path))`
 # but also works when `path` is a subdirectory of a git
 # repository. Only dirt within the subdirectory is considered.
-function is_dirty(path, gitconfig)
+function is_dirty(path, gitconfig, relative_path = ".")
     git = gitcmd(path, gitconfig)
     # TODO: There should be no need for the `-u` option but without it
     # a bogus diff is reported in the tests.
-    return !isempty(read(`$git diff-index -u HEAD -- .`))
+    return !isempty(read(`$git diff-index -u HEAD -- $(relative_path)`))
 end
 
 # If the package is omitted,

@@ -7,7 +7,7 @@ The full set of arguments to `register` is
 ```
 register(package = nothing;
          registry, commit, push, repo, ignore_reregistration,
-         gitconfig, create_gitlab_mr)
+         allow_package_dirty, gitconfig, create_gitlab_mr)
 ```
 
 although in many cases a no-argument `register()` call is sufficient.
@@ -42,8 +42,8 @@ Notes:
   start Julia with the `--project` flag.
 
 * The package must be stored as a git working copy, e.g. having been
-  cloned with `Pkg.develop`, and must not contain un-committed
-  changes.
+  cloned with `Pkg.develop`, and must not contain un-committed changes
+  (but also see the `allow_package_dirty` keyword argument).
 
 * The package must have a `Project.toml` or `JuliaProject.toml`
   file. This must include `name`, `uuid`, and `version` fields.
@@ -120,6 +120,21 @@ registered version. Defaults to `false`. If `true`, only print an
 informational message.
 
 **Note: The default will likely be changed to `true` in a future update.**
+
+`allow_package_dirty::Bool`:
+
+LocalRegistry only registers what has been committed to the
+package's repository, by nature of how Julia registries work. If the
+package has local modifications which have not been committed, there
+is a disconnect between the files on disk and what gets registered. By
+default this gives an error but if you understand the consequences you
+can override it by setting `allow_package_dirty` to `true` instead of
+the default `false`.
+
+An exception is if `Project.toml` (or `JuliaProject.toml` if
+that is used) itself is dirty. This still gives an error, because
+critical information like the version number is read from disk, and
+could be different to what is in the project file being registered.
 
 `git_config::Dict{<:AbstractString, <:AbstractString}`:
 
