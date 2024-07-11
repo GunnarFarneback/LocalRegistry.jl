@@ -161,12 +161,34 @@ with_empty_registry() do registry_dir, packages_dir
                                          registry = registry_dir,
                                          gitconfig = TEST_GITCONFIG,
                                          push = false)
+
+    # Error can be overridden with allow_package_dirty...
     register(joinpath(packages_dir, "Flux"),
              registry = registry_dir,
              gitconfig = TEST_GITCONFIG,
              push = false,
              allow_package_dirty = true)
     @test isfile(joinpath(registry_dir, "F", "Flux", "Package.toml"))
+
+    # ...but not if Project.toml is dirty.
+    project = joinpath(packages_dir, "Flux", "Project.toml")
+    write(project, replace(read(project, String), "0.8.3" => "0.8.4"))
+    @test_throws ErrorException register(joinpath(packages_dir, "Flux"),
+                                         registry = registry_dir,
+                                         gitconfig = TEST_GITCONFIG,
+                                         push = false,
+                                         allow_package_dirty = true)
+
+    if VERSION >= v"1.8"
+        # Check that we get the expected source of error.
+        @test_throws "Project.toml is dirty" begin
+            register(joinpath(packages_dir, "Flux"),
+                     registry = registry_dir,
+                     gitconfig = TEST_GITCONFIG,
+                     push = false,
+                     allow_package_dirty = true)
+        end
+    end
 end
 
 # Dirty the registry repository and try to register a package.
