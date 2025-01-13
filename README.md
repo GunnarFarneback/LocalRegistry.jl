@@ -21,7 +21,7 @@ package work back to Julia 1.1.
 
 ## Prerequisites
 
-You need to have command line `git` installed and available in the
+You need to have command line `git` (>=1.8.5) installed and available in the
 system `PATH`. If
 ```
 run(`git --version`)
