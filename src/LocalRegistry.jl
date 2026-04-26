@@ -74,7 +74,9 @@ function create_registry(name_or_path, repo; description = nothing,
     git = gitcmd(path, gitconfig)
     git_repo_cloned = false
 
-    if push
+    # repo = "." is a documented option which will just produce a
+    # harmless git error message within this code.
+    if push && repo != "."
         # The upstream repo may or may not exist. Even if it doesn't
         # yet exist, it might be possible to push to it. E.g. GitLab
         # can create a repository on demand when pushed to.

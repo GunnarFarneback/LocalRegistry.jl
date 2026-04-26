@@ -44,8 +44,8 @@ Notes:
 
 * If you should want to only use the registry on a single computer and
   not have an upstream repository at all, you can set `repository_url`
-  to a fake URL and use the keyword argument `push = false` with both
-  the `create_registry` and `register` functions.
+  to `"."` (or a corresponding File URI). This will configure the
+  created registry with itself as upstream repository.
 
 ## Keyword Arguments
 
