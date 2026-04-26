@@ -55,3 +55,20 @@ with_testdir() do testdir
                                     branch = "my_favorite_branch_name",
                                     push = true, gitconfig = TEST_GITCONFIG))
 end
+
+# Test that it works to set `repo = "."` to get a registry with itself
+# as upstream.
+with_testdir() do testdir
+    registry_dir = joinpath(testdir, "registry")
+    packages_dir = joinpath(testdir, "packages")
+    create_registry(registry_dir, ".", push = true,
+                    gitconfig = TEST_GITCONFIG)
+    prepare_package(packages_dir, "FirstTest1.toml")
+    register(joinpath(packages_dir, "FirstTest"), registry = registry_dir,
+             gitconfig = TEST_GITCONFIG, push = true)
+    @test contains(read(joinpath(registry_dir, "Registry.toml"), String),
+                   "FirstTest")
+    # Emulate a registry update.
+    git = gitcmd(registry_dir, TEST_GITCONFIG)
+    run(`git -C $(registry_dir) pull`)
+end
