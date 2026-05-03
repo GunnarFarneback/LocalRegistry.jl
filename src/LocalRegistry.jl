@@ -565,8 +565,8 @@ function get_remote_repo(package_path, gitconfig)
     foreach(remote_names) do remote_name
         push!(repos,readchomp(`$git remote get-url $(remote_name)`))
     end
-    length(repos) === 0 && error("No repo URL found. Try calling `register` with the keyword `repo` to provide a URL.")
-    length(repos) > 1 && error("Multiple repo URLs found. Try calling `register` with the keyword `repo` to provide a URL.\n$(repos)")
+    length(repos) === 0 && error("No repo URL found for the package at $(package_path). Either add a git remote or call `register` with the keyword `repo` to provide a repo URL.")
+    length(repos) > 1 && error("Multiple git remotes found for the package at $(package_path).\nCall `register` with the keyword `repo` to provide a repo URL.\nRemotes found: $(repos)")
     return repos[1]
 end
 
