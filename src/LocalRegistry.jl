@@ -146,9 +146,9 @@ Notes:
 `package` can be specified in the following ways:
 * By package name. The package must be available in the active `Pkg`
   environment.
-* By path. This is distinguished from package name by having more than
-  one path component. A path in the current working directory can be
-  specified by starting with `"./"`.
+* By path. This is distinguished from package name by not starting
+  with a letter or having more than one path component. A path in the
+  current working directory can be specified by starting with `"./"`.
 * By module. It needs to first be loaded by `using` or `import`.
 
 `registry` can be specified in the following ways:
@@ -407,12 +407,14 @@ function find_package_path(package::Module)
 end
 
 # A string argument is either interpreted as a path or as a package
-# name, decided by the number of components returned by `splitpath`.
+# name. If it does not start with a letter it is assumed to be a path.
+# Otherwise it decided by the number of components returned by
+# `splitpath`.
 #
 # If the package is given by name, it must be available in the current
 # package environment as a developed package.
 function find_package_path(package_name::AbstractString)
-    if length(splitpath(package_name)) > 1
+    if !isletter(first(package_name)) || length(splitpath(package_name)) > 1
         if !isdir(package_name)
             error("Package path $(package_name) does not exist.")
         end
