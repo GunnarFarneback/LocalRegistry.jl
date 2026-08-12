@@ -38,7 +38,7 @@ where `name` is a string containing the name of your registry and
 To install the registry for another Julia installation, start Julia and run
 ```julia
 using Pkg
-Pkg.Registry.add(repo)
+Pkg.Registry.add(url = repo)
 ```
 where `repo` is a string containing the file URL to your upstream registry.
 
