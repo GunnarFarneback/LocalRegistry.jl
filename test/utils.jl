@@ -92,7 +92,7 @@ function compare_file_trees(path1, path2)
         end
     elseif isfile(path1) && isfile(path2)
         if !compare_files(path1, path2)
-            println("Files $(path1) and $(path2) differ.")
+            println("Files $path1 and $path2 differ.")
             return false
         end
     else

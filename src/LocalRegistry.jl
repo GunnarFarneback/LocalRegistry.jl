@@ -12,12 +12,14 @@ Registration of new and updated packages is done by the function `register`.
 """
 module LocalRegistry
 
-using RegistryTools: RegistryTools, Compress,
+using CodecZlib: CodecZlib
+using RegistryTools: RegistryTools, Compress, SHA1, SHA256,
                      check_and_update_registry_files, ReturnStatus, haserror,
                      find_registered_version, Project
 using RegistryInstances: RegistryInstance, reachable_registries
 using UUIDs: uuid4
 import TOML
+using Tar: Tar
 
 export create_registry, register
 
@@ -259,16 +261,16 @@ function do_register(package, registry;
     # location within the git repository. For normal packages living
     # at the top level of the repository, `subdir` will be the empty
     # string. Also obtain the commit hash for later use.
-    tree_hash, subdir, commit_hash = get_tree_hash(package_path, gitconfig)
+    tree_hash_sha1, tree_hash_sha256, subdir, commit_hash = get_tree_hashes(package_path, gitconfig)
 
     # Check if this version has already been registered. Note, if it
     # was already registered and the contents has changed and
     # `ignore_reregistration` is false, this will be caught later.
     registered_version = find_registered_version(pkg, registry_path)
-    if registered_version == tree_hash
+    if !isnothing(registered_version) && ((registered_version.sha1 == tree_hash_sha1) || (registered_version.sha256 == tree_hash_sha256))
         @info "This version has already been registered and is unchanged."
         return false
-    elseif !isempty(registered_version) && ignore_reregistration
+    elseif !isnothing(registered_version) && ignore_reregistration
         @info "This version has already been registered. Registration request is ignored. Update the version number to register a new version."
         return false
     end
@@ -290,7 +292,7 @@ function do_register(package, registry;
         package_repo = repo
     end
 
-    @info "Registering package" package_path registry_path package_repo uuid=pkg.uuid version=pkg.version tree_hash subdir
+    @info "Registering package" package_path registry_path package_repo uuid=pkg.uuid version=pkg.version tree_hash_sha1 tree_hash_sha256 subdir
     clean_registry = true
     clean_branch = false
 
@@ -309,7 +311,7 @@ function do_register(package, registry;
     remote = readchomp(`$git remote`)
     status = ReturnStatus()
     try
-        check_and_update_registry_files(pkg, package_repo, tree_hash,
+        check_and_update_registry_files(pkg, package_repo, tree_hash_sha1, tree_hash_sha256,
                                         registry_path, String[], status,
                                         subdir = subdir)
         if !haserror(status)
@@ -319,7 +321,7 @@ function do_register(package, registry;
                     clean_branch = true
                 end
                 commit_registry(pkg, new_package,
-                                package_repo, tree_hash, git)
+                                package_repo, tree_hash_sha1, tree_hash_sha256, git)
                 if push
                     if isnothing(branch)
                         run(`$git push`)
@@ -548,16 +550,44 @@ function has_package(registry_path, pkg::Project)
     return haskey(registry["packages"], string(pkg.uuid))
 end
 
-function get_tree_hash(package_path, gitconfig)
+compute_treehash_sha1(tgz_file) = compute_treehash(tgz_file; algorithm="git-sha1")
+compute_treehash_sha256(tgz_file) = compute_treehash(tgz_file; algorithm="git-sha256")
+function compute_treehash(tgz_file; algorithm)
+    return open(CodecZlib.GzipDecompressorStream, tgz_file) do io
+        Tar.tree_hash(io; algorithm=algorithm)
+    end
+end
+
+function get_tree_hashes(package_path, gitconfig)
     git = gitcmd(package_path, gitconfig)
     subdir = readchomp(`$git rev-parse --show-prefix`)
-    tree_hash = readchomp(`$git rev-parse HEAD:$subdir`)
     commit_hash = readchomp(`$git rev-parse HEAD`)
     # Get rid of trailing slash.
     if isempty(basename(subdir))
         subdir = dirname(subdir)
     end
-    return tree_hash, subdir, commit_hash
+
+    original_treehash = readchomp(`$git rev-parse HEAD:$subdir`)
+    tree_hash_sha1, tree_hash_sha256 = mktempdir() do tmpdir
+        repo_dir = readchomp(`$git rev-parse --show-toplevel`)
+        tgz_file = joinpath(tmpdir, "archive.tar.gz")
+        cd(repo_dir) do
+            cmd = `git archive --format=tar.gz -o "$(tgz_file)" "$(original_treehash)"`
+            run(cmd)
+        end
+
+        sha1_str   = compute_treehash_sha1(tgz_file)
+        sha256_str = compute_treehash_sha256(tgz_file)
+
+        if (original_treehash != sha1_str) && (original_treehash != sha256_str)
+            # Very basic sanity check
+            error("Treehash $original_treehash does not match SHA1 ($sha1_str) or SHA256 ($sha256_str)")
+        end
+
+        SHA1(sha1_str), SHA256(sha256_str)
+    end
+
+    return tree_hash_sha1, tree_hash_sha256, subdir, commit_hash
 end
 
 function get_remote_repo(package_path, gitconfig)
@@ -573,14 +603,15 @@ function get_remote_repo(package_path, gitconfig)
 end
 
 function commit_registry(pkg::Project, new_package,
-                         package_repo, tree_hash, git)
+                         package_repo, tree_hash_sha1::SHA1, tree_hash_sha256::SHA256, git)
     @debug("commit changes")
     message = """
     $(commit_title(pkg, new_package))
 
     UUID: $(pkg.uuid)
     Repo: $(package_repo)
-    Tree: $(string(tree_hash))
+    Tree (SHA1): $(string(tree_hash_sha1))
+    Tree (SHA256): $(string(tree_hash_sha256))
     """
     run(`$git add --all`)
     run(`$git commit -qm $message`)
